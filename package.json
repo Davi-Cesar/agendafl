@@ -1,0 +1,19 @@
+{
+  "name": "agendafl",
+  "version": "1.0.0",
+  "description": "FL Agenda — Aplicativo Desktop de Agenda para Estética e Beleza",
+  "main": "dist/main/main.js",
+  "scripts": {
+    "start": "npm run build && electron .",
+    "dev": "tsc && electron . --enable-logging",
+    "build": "tsc",
+    "watch": "tsc --watch"
+  },
+  "keywords": ["electron", "agenda", "beauty", "salon", "desktop", "typescript"],
+  "author": "Davi-Cesar",
+  "license": "MIT",
+  "devDependencies": {
+    "electron": "^31.3.1",
+    "typescript": "^5.5.0"
+  }
+}
