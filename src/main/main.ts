@@ -1,5 +1,9 @@
 import { app, BrowserWindow, ipcMain, Notification } from 'electron';
 import * as path from 'node:path';
+import * as dotenv from 'dotenv';
+
+// Carregar variáveis de ambiente do .env
+dotenv.config();
 
 let mainWindow: BrowserWindow | null = null;
 
