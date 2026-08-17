@@ -1,4 +1,11 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
+import type { ElectronAPI } from '../../../main/preload';
+
+declare global {
+  interface Window {
+    electronAPI: ElectronAPI;
+  }
+}
 
 let clientInstance: SupabaseClient | null = null;
 

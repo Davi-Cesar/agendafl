@@ -1,0 +1,417 @@
+/* ============================================================
+   AgendaView — Tela de Agenda (Grade Horizontal)
+   ============================================================ */
+
+/* ── Layout da tela ──────────────────────────────────────── */
+.agenda-view {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  height: 100vh;
+  overflow: hidden;
+  background: var(--background);
+}
+
+/* ── Cabeçalho ───────────────────────────────────────────── */
+.agenda-header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-lg);
+  padding: var(--space-lg) var(--space-gutter);
+  border-bottom: 1px solid var(--outline-variant);
+  background: var(--surface-container-low);
+  flex-shrink: 0;
+}
+
+.agenda-header__left {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.agenda-header__title {
+  font-family: var(--font-display);
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--on-surface);
+  line-height: 1.2;
+}
+
+.agenda-header__date {
+  font-family: var(--font-mono);
+  font-size: var(--text-label-mono);
+  font-weight: 500;
+  color: var(--primary);
+  letter-spacing: 0.05em;
+}
+
+/* Badge Caixa */
+.agenda-header__caixa-badge {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: 6px 14px;
+  background: var(--surface-container-high);
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-full);
+  font-family: var(--font-body);
+  font-size: var(--text-body-sm);
+  font-weight: 600;
+  color: var(--on-surface);
+  white-space: nowrap;
+}
+
+.agenda-header__caixa-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--primary);
+  flex-shrink: 0;
+}
+
+/* Campo de busca */
+.agenda-header__search {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  background: var(--surface-container);
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-md);
+  padding: 8px var(--space-md);
+  transition: border-color 0.15s ease;
+  min-width: 220px;
+}
+
+.agenda-header__search:focus-within {
+  border-color: var(--primary);
+}
+
+.agenda-header__search-icon {
+  width: 16px;
+  height: 16px;
+  color: var(--outline);
+  flex-shrink: 0;
+}
+
+.agenda-header__search-input {
+  font-family: var(--font-body);
+  font-size: var(--text-body-sm);
+  color: var(--on-surface);
+  background: transparent;
+  width: 100%;
+}
+
+.agenda-header__search-input::placeholder {
+  color: var(--outline);
+}
+
+/* ── Área da Grade ───────────────────────────────────────── */
+.agenda-grid-wrapper {
+  flex: 1;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ── Cabeçalho dos profissionais (sticky horizontal) ─────── */
+.agenda-prof-header {
+  display: flex;
+  border-bottom: 1px solid var(--outline-variant);
+  background: var(--surface-container-low);
+  flex-shrink: 0;
+  /* Alinha com o scroll horizontal da grade */
+  overflow: hidden;
+}
+
+.agenda-prof-header__timecol {
+  width: var(--timecol-w);
+  min-width: var(--timecol-w);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-md) 0;
+  border-right: 1px solid var(--outline-variant);
+  flex-shrink: 0;
+  color: var(--outline);
+}
+
+.agenda-prof-header__scroll {
+  display: flex;
+  flex: 1;
+  overflow-x: scroll;
+  scrollbar-width: none;
+}
+
+.agenda-prof-header__scroll::-webkit-scrollbar {
+  display: none;
+}
+
+.agenda-prof-col {
+  min-width: var(--profcol-min-w);
+  flex: 1;
+  border-right: 1px solid var(--outline-variant);
+  padding: var(--space-md) var(--space-md);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.agenda-prof-col:last-child {
+  border-right: none;
+}
+
+.agenda-prof-col__name {
+  font-family: var(--font-display);
+  font-size: var(--text-body-sm);
+  font-weight: 600;
+  color: var(--on-surface);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.agenda-prof-col__role {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 500;
+  color: var(--on-surface-variant);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ── Corpo da grade (rolável vertical + horizontal) ──────── */
+.agenda-grid-body {
+  display: flex;
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.agenda-timecol {
+  width: var(--timecol-w);
+  min-width: var(--timecol-w);
+  border-right: 1px solid var(--outline-variant);
+  flex-shrink: 0;
+  position: relative;
+}
+
+.agenda-timecol__slot {
+  height: var(--slot-height);
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding-top: 6px;
+  border-bottom: 1px solid var(--outline-variant);
+}
+
+.agenda-timecol__label {
+  font-family: var(--font-mono);
+  font-size: var(--text-label-mono);
+  font-weight: 500;
+  color: var(--outline);
+  letter-spacing: 0.03em;
+}
+
+/* ── Colunas da grade (por profissional) ─────────────────── */
+.agenda-cols {
+  display: flex;
+  flex: 1;
+  overflow-x: auto;
+}
+
+.agenda-col {
+  min-width: var(--profcol-min-w);
+  flex: 1;
+  border-right: 1px solid var(--outline-variant);
+  position: relative;
+}
+
+.agenda-col:last-child {
+  border-right: none;
+}
+
+.agenda-col__slot {
+  height: var(--slot-height);
+  border-bottom: 1px solid var(--outline-variant);
+  cursor: pointer;
+  transition: background 0.1s ease;
+}
+
+.agenda-col__slot:hover {
+  background: var(--surface-container-high);
+}
+
+/* ── Linha de hora atual ─────────────────────────────────── */
+.agenda-now-line {
+  position: absolute;
+  left: 0;
+  right: 0;
+  display: flex;
+  align-items: center;
+  pointer-events: none;
+  z-index: 10;
+}
+
+.agenda-now-line__dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--primary);
+  flex-shrink: 0;
+  margin-left: -5px;
+}
+
+.agenda-now-line__rule {
+  flex: 1;
+  height: 1px;
+  background: var(--primary);
+  opacity: 0.5;
+}
+
+/* ── Cards de Agendamento ────────────────────────────────── */
+.appt-card {
+  position: absolute;
+  left: var(--space-xs);
+  right: var(--space-xs);
+  border-radius: var(--radius-md);
+  padding: var(--space-sm) var(--space-sm);
+  overflow: hidden;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  cursor: pointer;
+  transition: filter 0.15s ease;
+}
+
+.appt-card:hover {
+  filter: brightness(1.1);
+}
+
+/* Estado: Agendado (futuro) — tracejado */
+.appt-card--agendado {
+  background: var(--surface-container-high);
+  border: 1.5px dashed var(--outline);
+}
+
+/* Estado: Concluído / Padrão */
+.appt-card--concluido {
+  background: var(--surface-container-highest);
+  border: 1px solid var(--outline-variant);
+}
+
+/* Estado: EM ATENDIMENTO — cor primária (dourado) */
+.appt-card--em-atendimento {
+  background: #2a2100;         /* fundo escuro alaranjado — não usa var(--primary) como fill */
+  border: 1.5px solid var(--primary);
+}
+
+/* Labels dentro do card */
+.appt-card__status-label {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--primary);
+  margin-bottom: 2px;
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+}
+
+.appt-card__status-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--primary);
+}
+
+.appt-card__time {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 500;
+  color: var(--on-surface-variant);
+  letter-spacing: 0.03em;
+}
+
+.appt-card--em-atendimento .appt-card__time {
+  color: var(--on-surface-variant);
+}
+
+.appt-card__client {
+  font-family: var(--font-display);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--on-surface);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1.2;
+}
+
+.appt-card__service {
+  font-family: var(--font-body);
+  font-size: 11px;
+  font-weight: 400;
+  color: var(--on-surface-variant);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.appt-card__countdown {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 500;
+  color: var(--primary);
+  letter-spacing: 0.03em;
+  margin-top: 2px;
+}
+
+/* ── FAB (Botão flutuante "+") ───────────────────────────── */
+.agenda-fab {
+  position: fixed;
+  bottom: var(--space-xl);
+  right: var(--space-xl);
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background: var(--primary);
+  color: var(--on-primary);
+  font-size: 24px;
+  font-weight: 400;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 20px rgba(233, 195, 64, 0.25);
+  transition: transform 0.15s ease, background 0.15s ease, box-shadow 0.15s ease;
+  z-index: 50;
+  cursor: pointer;
+  border: none;
+}
+
+.agenda-fab:hover {
+  background: var(--primary-container);
+  transform: scale(1.06);
+  box-shadow: 0 6px 28px rgba(233, 195, 64, 0.35);
+}
+
+.agenda-fab:active {
+  transform: scale(0.96);
+}
+
+/* ── Scrollbar sincronizada (grade + cabeçalho) ──────────── */
+.agenda-grid-body .agenda-cols::-webkit-scrollbar,
+.agenda-prof-header__scroll::-webkit-scrollbar {
+  height: 4px;
+}
+
+.agenda-grid-body .agenda-cols::-webkit-scrollbar-thumb {
+  background: var(--outline-variant);
+  border-radius: var(--radius-full);
+}
