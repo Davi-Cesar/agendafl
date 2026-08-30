@@ -1,60 +1,27 @@
-/* ============================================================
-   FL AGENDA — Reset + Global Base
-   ============================================================ */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Sora:wght@400;500;600;700&display=swap');
 
-*,
-*::before,
-*::after {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-[#16130b] text-[#eae2d3] font-inter antialiased select-none overflow-hidden m-0 p-0;
+  }
 }
 
-html,
-body {
-  height: 100%;
-  overflow: hidden;
-}
-
-body {
-  font-family: var(--font-body);
-  background: var(--background);
-  color: var(--on-surface);
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  font-size: var(--text-body-md);
-  line-height: 1.5;
-}
-
-button {
-  cursor: pointer;
-  border: none;
-  background: none;
-  font-family: inherit;
-}
-
-input {
-  font-family: inherit;
-  border: none;
-  outline: none;
-  background: none;
-}
-
+/* Custom scrollbars */
 ::-webkit-scrollbar {
-  width: 5px;
-  height: 5px;
+  width: 6px;
+  height: 6px;
 }
-::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-track {
+  background: #110e06;
+}
 ::-webkit-scrollbar-thumb {
-  background: var(--outline-variant);
-  border-radius: var(--radius-full);
+  background: #38342b;
+  border-radius: 4px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: var(--outline);
-}
-
-#app {
-  display: flex;
-  height: 100vh;
-  overflow: hidden;
+  background: #4d4635;
 }

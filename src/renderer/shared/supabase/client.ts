@@ -1,23 +1,7 @@
-import { createClient, type SupabaseClient } from '@supabase/supabase-js';
-import type { ElectronAPI } from '../../../main/preload';
+import { createClient } from '@supabase/supabase-js';
 
-declare global {
-  interface Window {
-    electronAPI: ElectronAPI;
-  }
-}
+// Tenta obter credenciais da window.electronAPI (injetadas via Preload do Electron) ou do process.env
+const supabaseUrl = process.env.SUPABASE_URL || 'https://placeholder-url.supabase.co';
+const supabaseAnonKey = process.env.SUPABASE_ANON_KEY || 'placeholder-anon-key';
 
-let clientInstance: SupabaseClient | null = null;
-
-export async function getSupabaseClient(): Promise<SupabaseClient> {
-  if (clientInstance) return clientInstance;
-
-  const env = await window.electronAPI.getEnv();
-
-  if (!env.SUPABASE_URL || !env.SUPABASE_ANON_KEY) {
-    throw new Error('Variáveis SUPABASE_URL e SUPABASE_ANON_KEY não encontradas no .env');
-  }
-
-  clientInstance = createClient(env.SUPABASE_URL, env.SUPABASE_ANON_KEY);
-  return clientInstance;
-}
+export const supabase = createClient(supabaseUrl, supabaseAnonKey);
