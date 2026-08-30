@@ -19,6 +19,8 @@ interface Profissional {
   especialidade: string;
 }
 
+type StatusComanda = 'rascunho' | 'finalizada' | 'cancelada';
+
 interface Agendamento {
   id: string;
   profissionalId: string;
@@ -28,6 +30,9 @@ interface Agendamento {
   horarioFim: string;      // "HH:MM"
   status: StatusAgendamento;
   countdown?: string;      // ex: "Faltam 15min" — apenas em_atendimento
+  comandaId?: string;      // ID da comanda vinculada (quando criada)
+  comandaNumero?: string;  // Número legível ex: "#4821"
+  comandaStatus?: StatusComanda; // Status da comanda vinculada
 }
 
 /* ────────────────────────────────────────────────────────────────
@@ -399,26 +404,232 @@ function configurarNavegacao(): void {
 }
 
 /* ────────────────────────────────────────────────────────────────
-   12. HANDLERS DE INTERAÇÃO
+   12. HANDLERS DE INTERAÇÃO & MODAL
    ──────────────────────────────────────────────────────────────── */
 
+let modalNovoAgendamento: ModalNovoAgendamento | null = null;
+let modalDetalhesAgendamento: ModalDetalhesAgendamento | null = null;
+
 function onSlotClick(profissionalId: string, horario: string): void {
-  // TODO: abrir ModalNovoAgendamento com profissional e horário pré-preenchidos
   console.log('[Agenda] Slot clicado:', { profissionalId, horario });
+  modalNovoAgendamento?.open({ profissionalId, horario });
 }
 
 function onCardClick(agendamento: Agendamento): void {
-  // TODO: abrir PopupAgendamento com dados do card
-  console.log('[Agenda] Card clicado:', agendamento);
+  // Busca o nome do profissional para exibir no modal
+  const prof = PROFISSIONAIS.find(p => p.id === agendamento.profissionalId);
+  const profissionalNome = prof ? prof.nome : 'Profissional';
+
+  modalDetalhesAgendamento?.open({
+    id: agendamento.id,
+    clienteNome: agendamento.clienteNome,
+    servico: agendamento.servico,
+    horarioInicio: agendamento.horarioInicio,
+    horarioFim: agendamento.horarioFim,
+    status: agendamento.status,
+    profissionalNome,
+    countdown: agendamento.countdown,
+    comandaId: agendamento.comandaId,
+    comandaNumero: agendamento.comandaNumero,
+    comandaStatus: agendamento.comandaStatus,
+  });
 }
 
 function configurarFAB(): void {
   const fab = document.getElementById('btn-novo-agendamento');
   if (!fab) return;
   fab.addEventListener('click', () => {
-    // TODO: abrir ModalNovoAgendamento sem pré-seleção
-    console.log('[Agenda] FAB: Novo agendamento');
+    modalNovoAgendamento?.open();
   });
+}
+
+function inicializarModalNovoAgendamento(): void {
+  modalNovoAgendamento = new ModalNovoAgendamento({
+    profissionais: PROFISSIONAIS,
+    onConfirm: (dados: NovoAgendamentoFormData) => {
+      const novoAgendamento: Agendamento = {
+        id: `apt-${Date.now()}`,
+        profissionalId: dados.profissionalId,
+        clienteNome: dados.clienteNome,
+        servico: dados.servico,
+        horarioInicio: dados.horarioInicio,
+        horarioFim: dados.horarioFim,
+        status: 'agendado',
+      };
+      AGENDAMENTOS.push(novoAgendamento);
+
+      const searchInput = document.getElementById('search-profissional') as HTMLInputElement | null;
+      const filtro = searchInput ? searchInput.value.trim() : '';
+      renderCols(filtro);
+      console.log('[Agenda] Novo agendamento criado com sucesso:', novoAgendamento);
+    },
+  });
+}
+
+function inicializarModalDetalhesAgendamento(): void {
+  modalDetalhesAgendamento = new ModalDetalhesAgendamento({
+    onConfirmar: (agendamentoId: string, novoStatus: string) => {
+      // Atualiza o status do agendamento no array local
+      const apt = AGENDAMENTOS.find(a => a.id === agendamentoId);
+      if (apt) {
+        apt.status = novoStatus as StatusAgendamento;
+        // Remove countdown se mudou de status
+        if (novoStatus !== 'em_atendimento') {
+          apt.countdown = undefined;
+        }
+      }
+
+      // Re-renderiza a grade
+      const searchInput = document.getElementById('search-profissional') as HTMLInputElement | null;
+      const filtro = searchInput ? searchInput.value.trim() : '';
+      renderCols(filtro);
+      console.log('[Agenda] Status do agendamento atualizado:', agendamentoId, '→', novoStatus);
+    },
+    onCancelar: (agendamentoId: string) => {
+      // Remove o agendamento do array local
+      const idx = AGENDAMENTOS.findIndex(a => a.id === agendamentoId);
+      if (idx !== -1) {
+        AGENDAMENTOS.splice(idx, 1);
+      }
+
+      // Re-renderiza a grade
+      const searchInput = document.getElementById('search-profissional') as HTMLInputElement | null;
+      const filtro = searchInput ? searchInput.value.trim() : '';
+      renderCols(filtro);
+      console.log('[Agenda] Agendamento cancelado:', agendamentoId);
+    },
+    onAbrirComanda: (data: DetalhesAgendamentoData) => {
+      abrirComanda(data);
+    },
+    onVerComanda: (comandaId: string, comandaNumero: string, comandaStatus: string) => {
+      if (comandaStatus === 'rascunho') {
+        // Rascunho → reabrir CriarComandaView (editável)
+        const apt = AGENDAMENTOS.find(a => a.comandaId === comandaId);
+        if (!apt) return;
+        const prof = PROFISSIONAIS.find(p => p.id === apt.profissionalId);
+        reabrirComandaRascunho(apt, prof ? prof.nome : 'Profissional', comandaId, comandaNumero);
+      } else {
+        // Finalizada → abrir DetalhesComandaView (read-only)
+        abrirDetalhesComanda(comandaId, comandaNumero);
+      }
+    },
+  });
+}
+
+/* ────────────────────────────────────────────────────────────────
+   12b. NAVEGAÇÃO PARA TELA DE COMANDA
+   ──────────────────────────────────────────────────────────────── */
+
+let criarComandaView: CriarComandaView | null = null;
+
+function voltarParaAgendaCallback(): void {
+  const searchInput = document.getElementById('search-profissional') as HTMLInputElement | null;
+  const filtro = searchInput ? searchInput.value.trim() : '';
+  renderProfHeader(filtro);
+  renderCols(filtro);
+  posicionarLinhaAtual();
+  criarComandaView = null;
+}
+
+function abrirComanda(data: DetalhesAgendamentoData): void {
+  // Gera número da comanda e vincula ao agendamento
+  const numero = `#${Math.floor(1000 + Math.random() * 9000)}`;
+  const comandaId = `cmd-${Date.now()}`;
+
+  // Persiste vínculo no agendamento para acesso posterior
+  const apt = AGENDAMENTOS.find(a => a.id === data.id);
+  if (apt) {
+    apt.comandaId = comandaId;
+    apt.comandaNumero = numero;
+    apt.comandaStatus = 'rascunho';
+  }
+
+  criarComandaView = new CriarComandaView(
+    voltarParaAgendaCallback,
+    // onFinalizar
+    (agendamentoId: string) => {
+      const a = AGENDAMENTOS.find(x => x.id === agendamentoId);
+      if (a) a.comandaStatus = 'finalizada';
+      console.log('[Agenda] Comanda finalizada para agendamento:', agendamentoId);
+    },
+    // onCancelarExcluir
+    (agendamentoId: string) => {
+      const a = AGENDAMENTOS.find(x => x.id === agendamentoId);
+      if (a) a.comandaStatus = 'cancelada';
+      console.log('[Agenda] Comanda cancelada para agendamento:', agendamentoId);
+    },
+  );
+
+  criarComandaView.render({
+    clienteNome: data.clienteNome,
+    profissionalNome: data.profissionalNome,
+    servico: data.servico,
+    horarioInicio: data.horarioInicio,
+    horarioFim: data.horarioFim,
+    agendamentoId: data.id,
+    comandaId,
+    comandaNumero: numero,
+  });
+
+  console.log('[Agenda] Comanda aberta para:', data.clienteNome, numero);
+}
+
+function reabrirComandaRascunho(apt: Agendamento, profissionalNome: string, comandaId: string, comandaNumero: string): void {
+  criarComandaView = new CriarComandaView(
+    voltarParaAgendaCallback,
+    (agendamentoId: string) => {
+      const a = AGENDAMENTOS.find(x => x.id === agendamentoId);
+      if (a) a.comandaStatus = 'finalizada';
+      console.log('[Agenda] Comanda finalizada para agendamento:', agendamentoId);
+    },
+    (agendamentoId: string) => {
+      const a = AGENDAMENTOS.find(x => x.id === agendamentoId);
+      if (a) a.comandaStatus = 'cancelada';
+      console.log('[Agenda] Comanda cancelada para agendamento:', agendamentoId);
+    },
+  );
+
+  criarComandaView.render({
+    clienteNome: apt.clienteNome,
+    profissionalNome,
+    servico: apt.servico,
+    horarioInicio: apt.horarioInicio,
+    horarioFim: apt.horarioFim,
+    agendamentoId: apt.id,
+    comandaId,
+    comandaNumero,
+  });
+
+  console.log('[Agenda] Comanda rascunho reaberta:', comandaNumero);
+}
+
+function abrirDetalhesComanda(comandaId: string, comandaNumero: string): void {
+  const apt = AGENDAMENTOS.find(a => a.comandaId === comandaId);
+  if (!apt) return;
+
+  const prof = PROFISSIONAIS.find(p => p.id === apt.profissionalId);
+
+  const detalhesView = new DetalhesComandaView(() => {
+    const searchInput = document.getElementById('search-profissional') as HTMLInputElement | null;
+    const filtro = searchInput ? searchInput.value.trim() : '';
+    renderProfHeader(filtro);
+    renderCols(filtro);
+    posicionarLinhaAtual();
+  });
+
+  detalhesView.render({
+    comandaId,
+    comandaNumero,
+    clienteNome: apt.clienteNome,
+    profissionalNome: prof ? prof.nome : 'Profissional',
+    servico: apt.servico,
+    horarioInicio: apt.horarioInicio,
+    horarioFim: apt.horarioFim,
+    status: apt.status,
+    comandaStatus: apt.comandaStatus || 'finalizada',
+  });
+
+  console.log('[Agenda] Detalhes da comanda:', comandaNumero);
 }
 
 /* ────────────────────────────────────────────────────────────────
@@ -436,9 +647,14 @@ document.addEventListener('DOMContentLoaded', () => {
   posicionarLinhaAtual();
   setInterval(posicionarLinhaAtual, 30_000); // atualiza a cada 30s
 
+  // Modais
+  inicializarModalNovoAgendamento();
+  inicializarModalDetalhesAgendamento();
+
   // Interações
   sincronizarScroll();
   configurarBusca();
   configurarNavegacao();
   configurarFAB();
 });
+

@@ -7,12 +7,16 @@
   <title>FL Agenda — Agenda</title>
 
   <!-- Design tokens e base -->
-  <link rel="stylesheet" href="../shared/styles/tokens.css" />
-  <link rel="stylesheet" href="../shared/styles/global.css" />
+  <link rel="stylesheet" href="./shared/styles/tokens.css" />
+  <link rel="stylesheet" href="./shared/styles/global.css" />
 
   <!-- Estilos dos componentes -->
-  <link rel="stylesheet" href="../shared/ui/Sidebar/Sidebar.css" />
-  <link rel="stylesheet" href="../modules/agenda/views/AgendaView/AgendaView.css" />
+  <link rel="stylesheet" href="./shared/ui/Sidebar/Sidebar.css" />
+  <link rel="stylesheet" href="./modules/agenda/views/AgendaView/AgendaView.css" />
+  <link rel="stylesheet" href="./modules/agenda/components/ModalNovoAgendamento/ModalNovoAgendamento.css" />
+  <link rel="stylesheet" href="./modules/agenda/components/ModalDetalhesAgendamento/ModalDetalhesAgendamento.css" />
+  <link rel="stylesheet" href="./modules/agenda/views/CriarComandaView/CriarComandaView.css" />
+  <link rel="stylesheet" href="./modules/agenda/views/DetalhesComandaView/DetalhesComandaView.css" />
 </head>
 <body>
 
@@ -180,6 +184,10 @@
 
 </div><!-- /app -->
 
-<script src="agenda.js"></script>
+<script src="modules/agenda/components/ModalNovoAgendamento/ModalNovoAgendamento.js"></script>
+<script src="modules/agenda/components/ModalDetalhesAgendamento/ModalDetalhesAgendamento.js"></script>
+<script src="modules/agenda/views/CriarComandaView/CriarComandaView.js"></script>
+<script src="modules/agenda/views/DetalhesComandaView/DetalhesComandaView.js"></script>
+<script src="app.js"></script>
 </body>
 </html>

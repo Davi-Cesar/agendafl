@@ -6,7 +6,8 @@
   "scripts": {
     "start": "npm run build && electron .",
     "dev": "tsc && electron . --enable-logging",
-    "build": "tsc",
+    "build": "tsc && node -e \"fs.cpSync('src/renderer', 'dist/renderer', { recursive: true, filter: (src) => !src.endsWith('.ts') })\"",
+    "serve": "node server.js",
     "watch": "tsc --watch"
   },
   "keywords": [
