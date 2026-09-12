@@ -52,6 +52,22 @@ export function Sidebar() {
           <button
             type="button"
             className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-all ${
+              controller.currentRoute === '/profissionais'
+                ? 'bg-[#2d2a20] text-[#e9c340] font-semibold border-l-2 border-[#e9c340]'
+                : 'text-[#d0c6af] hover:bg-[#1f1b13] hover:text-[#eae2d3]'
+            }`}
+            onClick={() => controller.handleNavigate('/profissionais')}
+          >
+            <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+              <circle cx="12" cy="7" r="4" />
+            </svg>
+            Profissionais
+          </button>
+
+          <button
+            type="button"
+            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-all ${
               controller.currentRoute === '/clientes'
                 ? 'bg-[#2d2a20] text-[#e9c340] font-semibold border-l-2 border-[#e9c340]'
                 : 'text-[#d0c6af] hover:bg-[#1f1b13] hover:text-[#eae2d3]'

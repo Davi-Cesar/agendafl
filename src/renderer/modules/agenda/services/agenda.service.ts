@@ -26,6 +26,47 @@ export async function buscarProfissionais(): Promise<Profissional[]> {
   }));
 }
 
+export async function buscarHorariosEExcecoesDosProfissionais(): Promise<{
+  horariosMap: Record<string, any[]>;
+  excecoesMap: Record<string, any[]>;
+}> {
+  const [resHorarios, resExcecoes] = await Promise.all([
+    supabase.from('profissionais_horarios').select('*'),
+    supabase.from('profissionais_excecoes').select('*'),
+  ]);
+
+  const horariosMap: Record<string, any[]> = {};
+  (resHorarios.data || []).forEach((h: any) => {
+    const profId = h.profissional_id;
+    if (!horariosMap[profId]) horariosMap[profId] = [];
+    horariosMap[profId].push({
+      diaSemana: Number(h.dia_semana),
+      ativo: Boolean(h.ativo),
+      manhaInicio: h.manha_inicio?.slice(0, 5) || '08:00',
+      manhaFim: h.manha_fim?.slice(0, 5) || '11:00',
+      tardeInicio: h.tarde_inicio?.slice(0, 5) || '13:30',
+      tardeFim: h.tarde_fim?.slice(0, 5) || '17:00',
+      intervaloAlmoco: h.intervalo_almoco || '11:00 - 13:30',
+    });
+  });
+
+  const excecoesMap: Record<string, any[]> = {};
+  (resExcecoes.data || []).forEach((e: any) => {
+    const profId = e.profissional_id;
+    if (!excecoesMap[profId]) excecoesMap[profId] = [];
+    excecoesMap[profId].push({
+      id: e.id,
+      data: e.data,
+      inicio: e.horario_inicio?.slice(0, 5) || e.inicio || '08:00',
+      fim: e.horario_fim?.slice(0, 5) || e.fim || '12:00',
+      tipo: e.tipo || 'atendimento_extra',
+      motivo: e.motivo || '',
+    });
+  });
+
+  return { horariosMap, excecoesMap };
+}
+
 export async function buscarClientes(): Promise<Array<{ id: string; nome: string; telefone: string }>> {
   const { data, error } = await supabase
     .from('clientes')
@@ -72,7 +113,12 @@ export async function buscarAgendamentosDoDia(dataStr: string): Promise<Agendame
       status,
       observacoes,
       clientes (nome),
-      servicos (nome)
+      servicos (nome),
+      comandas (
+        id,
+        numero_sequencial,
+        status
+      )
     `)
     .eq('data', dataStr);
 
@@ -82,15 +128,22 @@ export async function buscarAgendamentosDoDia(dataStr: string): Promise<Agendame
   }
 
   return (data ?? []).map((row: any) => {
-    // Normaliza formato HH:MM (remove segundos do TIME do Postgres ex "08:00:00" -> "08:00")
     const hInicio = (row.horario_inicio || '08:00').slice(0, 5);
     const hFim = (row.horario_fim || '09:00').slice(0, 5);
     const clienteNome = row.clientes?.nome || 'Cliente';
     const servicoNome = row.servicos?.nome || 'Serviço';
 
+    const cmdList = Array.isArray(row.comandas) ? row.comandas : row.comandas ? [row.comandas] : [];
+    const cmd = cmdList.length > 0 ? cmdList[0] : null;
+
+    const comandaId = cmd?.id || undefined;
+    const comandaNumero = cmd ? `#${String(cmd.numero_sequencial || 1).padStart(4, '0')}` : undefined;
+    const comandaStatus = cmd ? (cmd.status === 'aberta' ? 'rascunho' : cmd.status) : undefined;
+
     return AgendamentoSchema.parse({
       id: row.id,
       profissionalId: row.profissional_id,
+      clienteId: row.cliente_id || undefined,
       clienteNome,
       servico: servicoNome,
       data: row.data,
@@ -98,6 +151,9 @@ export async function buscarAgendamentosDoDia(dataStr: string): Promise<Agendame
       horarioFim: hFim,
       status: row.status === 'cancelado' ? 'faltou' : row.status,
       countdown: row.status === 'em_atendimento' ? 'Faltam 15min' : undefined,
+      comandaId,
+      comandaNumero,
+      comandaStatus,
       observacoes: row.observacoes || undefined,
     });
   });
@@ -106,7 +162,6 @@ export async function buscarAgendamentosDoDia(dataStr: string): Promise<Agendame
 export async function salvarNovoAgendamento(input: CriarAgendamentoInput): Promise<Agendamento> {
   const valid = CriarAgendamentoDTO.parse(input);
 
-  // Busca ou cria cliente se não existir UUID
   let clienteId = valid.clienteNome;
   const isUuid = /^[0-9a-fA-F-]{36}$/.test(valid.clienteNome);
 
@@ -130,7 +185,6 @@ export async function salvarNovoAgendamento(input: CriarAgendamentoInput): Promi
     }
   }
 
-  // Busca ID do serviço por nome
   let servicoId = valid.servico;
   const isServicoUuid = /^[0-9a-fA-F-]{36}$/.test(valid.servico);
   if (!isServicoUuid) {

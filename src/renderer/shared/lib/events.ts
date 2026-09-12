@@ -6,6 +6,7 @@ export interface EventMap {
   'caixa:fechado': { caixaId: string };
   'agendamento:criado': { agendamentoId: string };
   'agendamento:atualizado': { agendamentoId: string };
+  'profissionais:horarios_atualizados': { id?: string; profissionalId?: string };
 }
 
 class EventBus {

@@ -1,6 +1,5 @@
-import { useEffect, useMemo, useCallback } from 'react';
+import { useEffect, useMemo, useCallback, useState } from 'react';
 import { useComandasStore } from '../../store/comandas.store';
-import { useRouterStore } from '@shared/router/router.store';
 import type { ComandaListItem } from '../../schemas/comanda.schema';
 
 export function useComandasViewController() {
@@ -10,11 +9,22 @@ export function useComandasViewController() {
   const setFiltroStatus = useComandasStore((s) => s.setFiltroStatus);
   const setBusca = useComandasStore((s) => s.setBusca);
   const carregarComandas = useComandasStore((s) => s.carregarComandas);
-  const navigate = useRouterStore((s) => s.navigate);
+  const carregando = useComandasStore((s) => s.carregando);
+  const comandaAtivaView = useComandasStore((s) => s.comandaAtivaView);
+  const setComandaAtivaView = useComandasStore((s) => s.setComandaAtivaView);
+
+  // Estado de Paginação
+  const [paginaAtual, setPaginaAtual] = useState(1);
+  const [itensPorPagina, setItensPorPaginaState] = useState(10);
 
   useEffect(() => {
     carregarComandas();
   }, [carregarComandas]);
+
+  // Resetar para página 1 ao alterar filtro de status ou busca
+  useEffect(() => {
+    setPaginaAtual(1);
+  }, [filtroStatus, busca]);
 
   const comandasFiltradas = useMemo(() => {
     return comandas.filter((c) => {
@@ -31,31 +41,86 @@ export function useComandasViewController() {
     });
   }, [comandas, filtroStatus, busca]);
 
+  const totalItens = comandasFiltradas.length;
+  const totalPaginas = Math.ceil(totalItens / itensPorPagina) || 1;
+
+  // Ajustar página atual caso ultrapasse o total de páginas
+  useEffect(() => {
+    if (paginaAtual > totalPaginas) {
+      setPaginaAtual(totalPaginas);
+    }
+  }, [paginaAtual, totalPaginas]);
+
+  const comandasPaginadas = useMemo(() => {
+    const inicio = (paginaAtual - 1) * itensPorPagina;
+    return comandasFiltradas.slice(inicio, inicio + itensPorPagina);
+  }, [comandasFiltradas, paginaAtual, itensPorPagina]);
+
+  const comandasFinalizadas = useMemo(() => {
+    return comandas.filter((c) => c.comandaStatus === 'finalizada');
+  }, [comandas]);
+
   const metricas = useMemo(() => {
     const totalRascunhos = comandas.filter((c) => c.comandaStatus === 'rascunho').length;
-    const totalFinalizadas = comandas.filter((c) => c.comandaStatus === 'finalizada').length;
-    const faturamentoTotal = comandas
-      .filter((c) => c.comandaStatus === 'finalizada')
-      .reduce((acc, c) => acc + c.valor, 0);
+    const totalFinalizadas = comandasFinalizadas.length;
+    const faturamentoTotal = comandasFinalizadas.reduce((acc, c) => acc + c.valor, 0);
 
     return { totalRascunhos, totalFinalizadas, faturamentoTotal };
-  }, [comandas]);
+  }, [comandas, comandasFinalizadas]);
 
   const handleItemClick = useCallback(
     (item: ComandaListItem) => {
-      navigate('/agenda');
+      if (item.comandaStatus === 'finalizada') {
+        setComandaAtivaView({ tipo: 'detalhes', dados: item });
+      } else {
+        setComandaAtivaView({ tipo: 'criar', dados: item });
+      }
     },
-    [navigate]
+    [setComandaAtivaView]
   );
 
+  const setItensPorPagina = useCallback((quantidade: number) => {
+    setItensPorPaginaState(quantidade);
+    setPaginaAtual(1);
+  }, []);
+
+  const proximaPagina = useCallback(() => {
+    setPaginaAtual((prev) => Math.min(prev + 1, totalPaginas));
+  }, [totalPaginas]);
+
+  const paginaAnterior = useCallback(() => {
+    setPaginaAtual((prev) => Math.max(prev - 1, 1));
+  }, []);
+
+  const inicioItem = totalItens === 0 ? 0 : (paginaAtual - 1) * itensPorPagina + 1;
+  const fimItem = Math.min(paginaAtual * itensPorPagina, totalItens);
+
   return {
-    comandas: comandasFiltradas,
+    comandas: comandasPaginadas,
+    totalComandas: comandas.length,
+    totalComandasFiltradas: totalItens,
+    comandasFinalizadas,
     filtroStatus,
     setFiltroStatus,
     busca,
     setBusca,
     metricas,
+    carregando,
+    comandaAtivaView,
+    setComandaAtivaView,
     handleItemClick,
+
+    // Props de Paginação
+    paginaAtual,
+    totalPaginas,
+    itensPorPagina,
+    inicioItem,
+    fimItem,
+    totalItens,
+    setPaginaAtual,
+    setItensPorPagina,
+    proximaPagina,
+    paginaAnterior,
   };
 }
 

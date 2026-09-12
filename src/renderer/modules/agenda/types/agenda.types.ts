@@ -3,6 +3,8 @@ import type { Agendamento, Profissional, CriarAgendamentoInput } from '../schema
 export interface AgendaStoreState {
   agendamentos: Agendamento[];
   profissionais: Profissional[];
+  horariosMap: Record<string, any[]>;
+  excecoesMap: Record<string, any[]>;
   dataSelecionada: string;
   filtroProfissional: string;
   carregando: boolean;
@@ -14,6 +16,7 @@ export interface AgendaStoreState {
     tipo: 'criar' | 'detalhes';
     dados: any;
   } | null;
+  modalAlertaCaixaFechadoAberto: boolean;
 }
 
 export interface AgendaStoreActions {
@@ -25,6 +28,8 @@ export interface AgendaStoreActions {
   cancelarAgendamento: (id: string) => Promise<void>;
   abrirModalNovo: (prefill?: { profissionalId?: string; horario?: string; data?: string }) => void;
   fecharModalNovo: () => void;
+  abrirAlertaCaixaFechado: () => void;
+  fecharAlertaCaixaFechado: () => void;
   selecionarAgendamento: (agendamento: Agendamento | null) => void;
   setComandaAtivaView: (view: { tipo: 'criar' | 'detalhes'; dados: any } | null) => void;
   vincularComanda: (agendamentoId: string, comandaId: string, comandaNumero: string) => void;

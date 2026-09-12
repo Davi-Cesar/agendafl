@@ -1,5 +1,6 @@
-import { useEffect, useMemo, useCallback } from 'react';
+import { useEffect, useMemo, useCallback, useState } from 'react';
 import { useAgendaStore } from '../../store/agenda.store';
+import { useCaixaStore } from '@modules/caixa';
 import { formatDate } from '@shared/lib/utils';
 
 export function useAgendaViewController() {
@@ -11,9 +12,22 @@ export function useAgendaViewController() {
   const carregarAgenda = useAgendaStore((s) => s.carregarAgenda);
   const carregando = useAgendaStore((s) => s.carregando);
 
+  // Integração com o Módulo de Caixa (Reatividade Global)
+  const caixaAtivo = useCaixaStore((s) => s.caixaAtivo);
+  const carregarCaixa = useCaixaStore((s) => s.carregarCaixa);
+  const abrirModalAbrir = useCaixaStore((s) => s.abrirModalAbrir);
+  const modalAbrirCaixaAberto = useCaixaStore((s) => s.modalAbrirAberto);
+
+  const modalAlertaCaixaFechadoAberto = useAgendaStore((s) => s.modalAlertaCaixaFechadoAberto);
+  const abrirAlertaCaixaFechado = useAgendaStore((s) => s.abrirAlertaCaixaFechado);
+  const fecharAlertaCaixaFechado = useAgendaStore((s) => s.fecharAlertaCaixaFechado);
+
+  const isCaixaAberto = Boolean(caixaAtivo);
+
   useEffect(() => {
     carregarAgenda();
-  }, [carregarAgenda, dataSelecionada]);
+    carregarCaixa();
+  }, [carregarAgenda, carregarCaixa, dataSelecionada]);
 
   const dataFormatada = useMemo(() => {
     const raw = formatDate(dataSelecionada);
@@ -28,13 +42,38 @@ export function useAgendaViewController() {
     [setFiltroProfissional]
   );
 
+  const abrirModalNovoComValidacao = useCallback(
+    (payload?: { profissionalId?: string; horario?: string }) => {
+      if (!isCaixaAberto) {
+        abrirAlertaCaixaFechado();
+        return;
+      }
+      abrirModalNovo(payload);
+    },
+    [isCaixaAberto, abrirModalNovo, abrirAlertaCaixaFechado]
+  );
+
+  const fecharAlertaCaixa = useCallback(() => {
+    fecharAlertaCaixaFechado();
+  }, [fecharAlertaCaixaFechado]);
+
+  const handleAbrirCaixaNoAlerta = useCallback(() => {
+    fecharAlertaCaixaFechado();
+    abrirModalAbrir();
+  }, [fecharAlertaCaixaFechado, abrirModalAbrir]);
+
   return {
     dataFormatada,
     filtroProfissional,
     handleSearchInput,
-    abrirModalNovo,
+    abrirModalNovo: abrirModalNovoComValidacao,
     comandaAtivaView,
     carregando,
+    isCaixaAberto,
+    modalAlertaCaixaFechadoAberto,
+    fecharAlertaCaixa,
+    handleAbrirCaixaNoAlerta,
+    modalAbrirCaixaAberto,
   };
 }
 

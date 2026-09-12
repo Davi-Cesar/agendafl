@@ -65,7 +65,8 @@ Documento de levantamento funcional a partir da tela de detalhe de uma comanda a
 | RN-17 | Exibe o status e o número da comanda ("COMANDA ABERTA #8843") no topo da tela. | Confirmar ao operador que a comanda está ativa e permitir identificá -la e localizá-la de forma única (por número) em consultas, impressões ou eventuais conferências. |
 | RN-18 | Apresenta uma etiqueta de segmentação do cliente ("VIP GOLD") ao lado do status da comanda. | Sinalizar imediatamente o nível/categoria do cliente para que a equipe ofereça o tratamento e eventuais benefícios (descontos, prioridade) condizentes com o programa de fidelidade. |
 | RN-19 | Exibe o nome do cliente em destaque ("Mariana Silva") junto de uma etiqueta de evento especial ("Aniversariante do Dia") quando aplicável. | Alertar a equipe sobre uma oportunidade de encantamento (parabenizar, oferecer cortesia) e reforçar o relacionamento com o cliente. |
-| RN-20 | Disponibiliza os botões "Imprimir Via" e "Salvar Rascunho" no topo da tela. | Permitir, respectivamente, entregar ao cliente um comprovante físico parcial e preservar o andamento da comanda sem finalizá -la, evitando perda de dados em atendimentos interrompidos. |
+| RN-20 | Disponibiliza a opção "Imprimir Via" no topo da tela. A comanda só é criada e persistida no banco de dados no momento em que "FINALIZAR COMANDA" é acionado. | Garantir a integridade dos dados financeiros no banco, salvando permanentemente a comanda apenas no encerramento efetivo do atendimento. |
+| RN-20b | Exibe o badge com o número da comanda (ex.: "#0001") diretamente no card do agendamento e na modal de detalhes assim que a comanda for finalizada, permitindo abri-la diretamente com um clique. | Permitir localização e acesso rápido à comanda concluída sem precisar navegar por filtros ou buscar manualmente. |
 
 ## 8. Serviços Adicionados
 

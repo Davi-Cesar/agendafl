@@ -7,6 +7,7 @@ import { ComandasView } from '@modules/comandas';
 import { CaixaView } from '@modules/caixa';
 import { ClientesView } from '@modules/clientes';
 import { ServicosView } from '@modules/servicos';
+import { ProfissionaisView } from '@modules/profissionais';
 
 function App() {
   const currentRoute = useRouterStore((s) => s.currentRoute);
@@ -21,6 +22,7 @@ function App() {
         {currentRoute === '/caixa' && <CaixaView />}
         {currentRoute === '/clientes' && <ClientesView />}
         {currentRoute === '/servicos' && <ServicosView />}
+        {currentRoute === '/profissionais' && <ProfissionaisView />}
       </div>
     </div>
   );

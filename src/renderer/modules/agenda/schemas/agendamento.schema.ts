@@ -18,6 +18,7 @@ export const ServicoItemSchema = z.object({
 export const AgendamentoSchema = z.object({
   id: z.string(),
   profissionalId: z.string(),
+  clienteId: z.string().optional(),
   clienteNome: z.string().min(1, 'Nome do cliente é obrigatório'),
   servico: z.string().min(1, 'Serviço é obrigatório'),
   data: z.string().optional(),

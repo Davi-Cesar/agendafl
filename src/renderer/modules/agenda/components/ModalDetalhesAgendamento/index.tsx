@@ -11,7 +11,14 @@ export function ModalDetalhesAgendamento() {
     <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4" role="dialog" aria-modal="true">
       <div className="bg-[#1f1b13] border border-[#38342b] rounded-lg w-full max-w-md shadow-2xl p-6 font-inter text-[#eae2d3] relative animate-in fade-in zoom-in duration-150">
         <div className="flex items-center justify-between border-b border-[#38342b] pb-3 mb-4">
-          <h2 className="font-sora font-semibold text-lg text-[#eae2d3]">Detalhes do Agendamento</h2>
+          <div className="flex items-center gap-3">
+            <h2 className="font-sora font-semibold text-lg text-[#eae2d3]">Detalhes do Agendamento</h2>
+            {apt.comandaNumero && (
+              <span className="bg-[#10b981]/20 text-[#10b981] border border-[#10b981]/40 font-mono text-[11px] px-2.5 py-0.5 rounded-full font-bold">
+                Comanda {apt.comandaNumero}
+              </span>
+            )}
+          </div>
           <button
             type="button"
             className="text-[#99907b] hover:text-[#eae2d3] p-1 transition-colors"
@@ -77,7 +84,7 @@ export function ModalDetalhesAgendamento() {
           <button
             type="button"
             className="bg-[#93000a]/20 hover:bg-[#93000a] text-[#ffb4ab] px-3 py-2 rounded-md text-xs font-medium transition-all"
-            onClick={controller.handleCancelarAgendamento}
+            onClick={controller.excluirAgendamento}
           >
             Cancelar
           </button>
@@ -87,7 +94,7 @@ export function ModalDetalhesAgendamento() {
             className="bg-[#e9c340] hover:bg-[#b8960c] text-[#3c2f00] font-semibold px-5 py-2 rounded-md text-xs transition-all cursor-pointer"
             onClick={controller.handleAbrirComanda}
           >
-            {apt.comandaId ? 'Ver Comanda' : 'Abrir Comanda'}
+            {apt.comandaId ? `Ver Comanda ${apt.comandaNumero || ''}` : 'Abrir Comanda'}
           </button>
         </div>
       </div>

@@ -25,7 +25,7 @@ export function useModalDetalhesAgendamentoController() {
     [agendamento, atualizarStatusAgendamento]
   );
 
-  const handleCancelarAgendamento = useCallback(async () => {
+  const excluirAgendamento = useCallback(async () => {
     if (!agendamento) return;
     await cancelarAgendamento(agendamento.id);
   }, [agendamento, cancelarAgendamento]);
@@ -37,6 +37,7 @@ export function useModalDetalhesAgendamentoController() {
       tipo: agendamento.comandaStatus === 'rascunho' || !agendamento.comandaStatus ? 'criar' : 'detalhes',
       dados: {
         agendamentoId: agendamento.id,
+        clienteId: agendamento.clienteId,
         clienteNome: agendamento.clienteNome,
         profissionalNome,
         servico: agendamento.servico,
@@ -54,7 +55,7 @@ export function useModalDetalhesAgendamentoController() {
     profissionalNome,
     fecharModal,
     handleMudarStatus,
-    handleCancelarAgendamento,
+    excluirAgendamento,
     handleAbrirComanda,
   };
 }

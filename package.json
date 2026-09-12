@@ -6,7 +6,7 @@
   "scripts": {
     "start": "npm run build && electron .",
     "build:css": "tailwindcss -i src/renderer/shared/styles/global.css -o dist/renderer/styles.css --minify",
-    "dev": "tsc && npm run build:css && esbuild src/renderer/app.tsx --bundle --outfile=dist/renderer/app.js --platform=browser --define:process.env.SUPABASE_URL='\"https://jwtvrbifxeaudizamunl.supabase.co\"' --define:process.env.SUPABASE_ANON_KEY='\"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imp3dHZyYmlmeGVhdWRpemFtdW5sIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODYyODM0NzgsImV4cCI6MjEwMTg1OTQ3OH0.D1S4YxbvcXDvZ0_Pdc0kR6vkBmXvdpZ8ID3zKaW7TbA\"' && electron . --enable-logging",
+    "dev": "npm run build && electron . --enable-logging",
     "build": "tsc && npm run build:css && esbuild src/renderer/app.tsx --bundle --outfile=dist/renderer/app.js --platform=browser --define:process.env.SUPABASE_URL='\"https://jwtvrbifxeaudizamunl.supabase.co\"' --define:process.env.SUPABASE_ANON_KEY='\"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imp3dHZyYmlmeGVhdWRpemFtdW5sIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODYyODM0NzgsImV4cCI6MjEwMTg1OTQ3OH0.D1S4YxbvcXDvZ0_Pdc0kR6vkBmXvdpZ8ID3zKaW7TbA\"' && node -e \"fs.cpSync('src/renderer/index.html', 'dist/renderer/index.html')\"",
     "serve": "node server.js",
     "watch": "tsc --watch"
@@ -22,11 +22,13 @@
   "author": "Davi-Cesar",
   "license": "MIT",
   "devDependencies": {
+    "@types/pg": "^8.23.1",
     "@types/react": "^18.3.3",
     "@types/react-dom": "^18.3.0",
     "autoprefixer": "^10.5.4",
     "electron": "^31.3.1",
     "esbuild": "^0.23.0",
+    "pg": "^8.23.0",
     "postcss": "^8.5.26",
     "tailwindcss": "^3.4.19",
     "typescript": "^5.5.0"

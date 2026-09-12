@@ -2,10 +2,13 @@ import { create } from 'zustand';
 import * as agendaService from '../services/agenda.service';
 import type { AgendaStore } from '../types/agenda.types';
 import type { Agendamento, CriarAgendamentoInput } from '../schemas/agendamento.schema';
+import { eventBus } from '@shared/lib/events';
 
 export const useAgendaStore = create<AgendaStore>((set, get) => ({
   agendamentos: [],
   profissionais: [],
+  horariosMap: {},
+  excecoesMap: {},
   dataSelecionada: new Date().toISOString().split('T')[0],
   filtroProfissional: '',
   carregando: false,
@@ -14,6 +17,7 @@ export const useAgendaStore = create<AgendaStore>((set, get) => ({
   modalNovoPrefill: null,
   agendamentoSelecionado: null,
   comandaAtivaView: null,
+  modalAlertaCaixaFechadoAberto: false,
 
   setDataSelecionada: (dataStr: string) => {
     set({ dataSelecionada: dataStr });
@@ -27,11 +31,18 @@ export const useAgendaStore = create<AgendaStore>((set, get) => ({
   carregarAgenda: async () => {
     set({ carregando: true, erro: null });
     try {
-      const [agendamentos, profissionais] = await Promise.all([
+      const [agendamentos, profissionais, horEex] = await Promise.all([
         agendaService.buscarAgendamentosDoDia(get().dataSelecionada),
         agendaService.buscarProfissionais(),
+        agendaService.buscarHorariosEExcecoesDosProfissionais(),
       ]);
-      set({ agendamentos, profissionais, carregando: false });
+      set({
+        agendamentos,
+        profissionais,
+        horariosMap: horEex.horariosMap,
+        excecoesMap: horEex.excecoesMap,
+        carregando: false,
+      });
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Erro ao carregar dados do Supabase';
       set({ erro: message, carregando: false });
@@ -79,6 +90,14 @@ export const useAgendaStore = create<AgendaStore>((set, get) => ({
     set({ modalNovoAberto: false, modalNovoPrefill: null });
   },
 
+  abrirAlertaCaixaFechado: () => {
+    set({ modalAlertaCaixaFechadoAberto: true });
+  },
+
+  fecharAlertaCaixaFechado: () => {
+    set({ modalAlertaCaixaFechadoAberto: false });
+  },
+
   selecionarAgendamento: (agendamento) => {
     set({ agendamentoSelecionado: agendamento });
   },
@@ -107,10 +126,19 @@ export const useAgendaStore = create<AgendaStore>((set, get) => ({
     set((state) => ({
       agendamentos: state.agendamentos.map((apt) => {
         if (apt.id === agendamentoId) {
-          return { ...apt, comandaStatus };
+          return {
+            ...apt,
+            comandaStatus,
+            status: comandaStatus === 'finalizada' ? 'concluido' : apt.status,
+          };
         }
         return apt;
       }),
     }));
   },
 }));
+
+// Escutar eventos de atualização de horários de profissionais para recarregar a agenda
+eventBus.on('profissionais:horarios_atualizados', () => {
+  useAgendaStore.getState().carregarAgenda();
+});
