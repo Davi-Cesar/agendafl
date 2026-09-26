@@ -17,6 +17,7 @@ function createWindow(): void {
     frame: false,
     titleBarStyle: 'hidden',
     backgroundColor: '#0a0e1a',
+    show: false,
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       nodeIntegration: false,
@@ -26,6 +27,11 @@ function createWindow(): void {
   });
 
   mainWindow.loadFile(path.join(__dirname, '../renderer/index.html'));
+
+  mainWindow.once('ready-to-show', () => {
+    mainWindow?.show();
+    mainWindow?.focus();
+  });
 
   mainWindow.on('closed', () => {
     mainWindow = null;

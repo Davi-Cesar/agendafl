@@ -3,17 +3,38 @@ import { z } from 'zod';
 export const ProfissionalStatusSchema = z.enum(['ativo', 'inativo']);
 export type ProfissionalStatus = z.infer<typeof ProfissionalStatusSchema>;
 
-export type TipoExcecaoHorario = 'atendimento_extra' | 'indisponibilidade' | 'bloqueio';
+export const TipoExcecaoHorarioSchema = z.enum(['atendimento_extra', 'indisponibilidade', 'bloqueio']);
+export type TipoExcecaoHorario = z.infer<typeof TipoExcecaoHorarioSchema>;
 
-export interface ExcecaoHorario {
-  id: string;
-  profissionalId?: string;
-  data: string; // Data específica YYYY-MM-DD
-  inicio: string; // HH:mm
-  fim: string; // HH:mm
-  tipo: TipoExcecaoHorario; // 'atendimento_extra' | 'indisponibilidade'
-  motivo?: string;
-}
+export const ExcecaoHorarioSchema = z.object({
+  id: z.string(),
+  profissionalId: z.string().optional(),
+  data: z.string(), // YYYY-MM-DD
+  inicio: z.string(), // HH:mm
+  fim: z.string(), // HH:mm
+  tipo: TipoExcecaoHorarioSchema,
+  motivo: z.string().optional().nullable(),
+});
+
+export type ExcecaoHorario = z.infer<typeof ExcecaoHorarioSchema>;
+
+export const CriarExcecaoHorarioDTOSchema = z.object({
+  profissionalId: z.string().min(1, 'Selecione um profissional'),
+  data: z.string().min(1, 'A data específica é obrigatória'),
+  inicio: z.string().regex(/^\d{2}:\d{2}$/, 'Horário de início inválido (HH:MM)'),
+  fim: z.string().regex(/^\d{2}:\d{2}$/, 'Horário de fim inválido (HH:MM)'),
+  tipo: TipoExcecaoHorarioSchema.default('atendimento_extra'),
+  motivo: z.string().optional(),
+}).refine((data) => {
+  const [hI, mI] = data.inicio.split(':').map(Number);
+  const [hF, mF] = data.fim.split(':').map(Number);
+  return hF * 60 + mF > hI * 60 + mI;
+}, {
+  message: 'O horário de fim deve ser posterior ao horário de início.',
+  path: ['fim'],
+});
+
+export type CriarExcecaoHorarioDTO = z.infer<typeof CriarExcecaoHorarioDTOSchema>;
 
 export const ProfissionalSchema = z.object({
   id: z.string().uuid(),
@@ -31,6 +52,19 @@ export const ProfissionalSchema = z.object({
 
 export type Profissional = z.infer<typeof ProfissionalSchema>;
 
+export const CriarProfissionalDTOSchema = z.object({
+  nome: z.string().min(2, 'Nome deve ter pelo menos 2 caracteres'),
+  especialidade: z.string().optional().nullable(),
+  email: z.string().email('E-mail inválido').optional().nullable().or(z.literal('')),
+  telefone: z.string().optional().nullable(),
+  cpf: z.string().optional().nullable(),
+  dataNascimento: z.string().optional().nullable(),
+  comissaoPercentual: z.number().min(0).max(100).default(60),
+  status: ProfissionalStatusSchema.default('ativo'),
+});
+
+export type CriarProfissionalDTO = z.infer<typeof CriarProfissionalDTOSchema>;
+
 export const ProfissionalHorarioSchema = z.object({
   id: z.string().optional(),
   profissionalId: z.string().uuid(),
@@ -41,14 +75,7 @@ export const ProfissionalHorarioSchema = z.object({
   tardeInicio: z.string().default('13:30'),
   tardeFim: z.string().default('17:00'),
   intervaloAlmoco: z.string().optional().default('11:00 - 13:30'),
-  excecoes: z.array(z.object({
-    id: z.string(),
-    data: z.string(),
-    inicio: z.string(),
-    fim: z.string(),
-    tipo: z.enum(['atendimento_extra', 'indisponibilidade', 'bloqueio']).default('indisponibilidade'),
-    motivo: z.string().optional(),
-  })).optional().default([]),
+  excecoes: z.array(ExcecaoHorarioSchema).optional().default([]),
 });
 
 export type ProfissionalHorario = z.infer<typeof ProfissionalHorarioSchema>;

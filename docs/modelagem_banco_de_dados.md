@@ -170,6 +170,7 @@ Armazena o cadastro completo dos clientes do estabelecimento.
 | `cpf` | `TEXT` | NULL (UNIQUE) | CPF do cliente (opcional) |
 | `observacoes` | `TEXT` | NULL | Notas e preferências livres (exibido na comanda) |
 | `status` | `enum_status_cliente` | **NOT NULL** | Default `'ativo'` |
+| `removido_em` | `TIMESTAMPTZ` | NULL | Timestamp do Soft Delete (NULL = cliente normal) |
 | `created_at` | `TIMESTAMPTZ` | **NOT NULL** | Data/hora de criação |
 | `updated_at` | `TIMESTAMPTZ` | **NOT NULL** | Data/hora da última atualização |
 

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useProfissionaisStore } from '../../store/profissionais.store';
-import type { TipoExcecaoHorario } from '../../schemas/profissional.schema';
+import { CriarExcecaoHorarioDTOSchema, type TipoExcecaoHorario } from '../../schemas/profissional.schema';
 
 function parseTimeToMins(tStr: string): number {
   if (!tStr) return 0;
@@ -73,35 +73,35 @@ export function useModalAddExcecaoController() {
 
   const handleSalvar = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!dataStr) {
-      setErro('A data específica é obrigatória.');
-      return;
-    }
-    if (!inicio.trim() || !fim.trim()) {
-      setErro('Os horários de início e fim são obrigatórios.');
-      return;
-    }
-
-    const mInicio = parseTimeToMins(inicio.trim());
-    const mFim = parseTimeToMins(fim.trim());
-
-    if (mFim <= mInicio) {
-      setErro('O horário de fim deve ser posterior ao horário de início.');
-      return;
-    }
-
     const targetProfId = config.profissionalId || profissionalSelecionadoId;
-    if (!targetProfId) {
-      setErro('Nenhum profissional selecionado.');
+
+    const parseResult = CriarExcecaoHorarioDTOSchema.safeParse({
+      profissionalId: targetProfId || '',
+      data: dataStr,
+      inicio: inicio.trim(),
+      fim: fim.trim(),
+      tipo,
+      motivo: motivo.trim(),
+    });
+
+    if (!parseResult.success) {
+      setErro(parseResult.error.issues[0]?.message || 'Dados de exceção inválidos');
       return;
     }
 
     try {
-      await adicionarExcecaoDireta(targetProfId, dataStr, inicio.trim(), fim.trim(), tipo, motivo.trim());
+      await adicionarExcecaoDireta(
+        parseResult.data.profissionalId,
+        parseResult.data.data,
+        parseResult.data.inicio,
+        parseResult.data.fim,
+        parseResult.data.tipo,
+        parseResult.data.motivo
+      );
       const callback = config.onSalvarSuccess;
       handleFechar();
       if (callback) {
-        callback(dataStr, inicio.trim(), fim.trim());
+        callback(parseResult.data.data, parseResult.data.inicio, parseResult.data.fim);
       }
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Erro ao salvar exceção';

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useProfissionaisStore } from '../../store/profissionais.store';
-import type { Profissional } from '../../schemas/profissional.schema';
+import { CriarProfissionalDTOSchema, type Profissional } from '../../schemas/profissional.schema';
 
 export function useModalNovoProfissionalController() {
   const modalAberto = useProfissionaisStore((s) => s.modalNovoAberto);
@@ -43,8 +43,19 @@ export function useModalNovoProfissionalController() {
 
   const handleSalvar = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!nome.trim()) {
-      setErro('O nome do profissional é obrigatório.');
+
+    const parseResult = CriarProfissionalDTOSchema.safeParse({
+      nome: nome.trim(),
+      especialidade: especialidade.trim() || null,
+      email: email.trim() || null,
+      telefone: telefone.trim() || null,
+      cpf: cpf.trim() || null,
+      comissaoPercentual: 60,
+      status,
+    });
+
+    if (!parseResult.success) {
+      setErro(parseResult.error.issues[0]?.message || 'Dados inválidos');
       return;
     }
 
@@ -54,13 +65,7 @@ export function useModalNovoProfissionalController() {
     try {
       const dados: Partial<Profissional> = {
         id: profissionalParaEditar?.id,
-        nome: nome.trim(),
-        especialidade: especialidade.trim() || null,
-        email: email.trim() || null,
-        telefone: telefone.trim() || null,
-        cpf: cpf.trim() || null,
-        comissaoPercentual: 60,
-        status,
+        ...parseResult.data,
       };
 
       await salvarProfissional(dados);

@@ -71,6 +71,7 @@ export async function buscarClientes(): Promise<Array<{ id: string; nome: string
   const { data, error } = await supabase
     .from('clientes')
     .select('id, nome, telefone')
+    .is('removido_em', null)
     .eq('status', 'ativo');
 
   if (error) {

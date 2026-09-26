@@ -5,7 +5,7 @@ export function Sidebar() {
   const controller = useSidebarController();
 
   return (
-    <aside className="w-[220px] min-w-[220px] h-full bg-[#110e06] border-r border-[#1e1e1e] flex flex-col justify-between p-4 font-inter text-[#eae2d3]">
+    <aside className="w-[220px] min-w-[220px] h-full bg-[#110e06] border-r border-[#e9c340]/30 shadow-[4px_0_20px_rgba(233,195,64,0.12)] flex flex-col justify-between p-4 font-inter text-[#eae2d3] relative z-10">
       <div>
         {/* Identidade */}
         <div className="mb-6 px-2">
@@ -17,9 +17,9 @@ export function Sidebar() {
         <nav className="space-y-1">
           <button
             type="button"
-            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-all ${
+            className={`w-full flex items-center gap-3 px-3.5 py-2.5 text-sm font-medium transition-all ${
               controller.currentRoute === '/agenda'
-                ? 'bg-[#2d2a20] text-[#e9c340] font-semibold border-l-2 border-[#e9c340]'
+                ? 'bg-[#2d2a20] text-[#e9c340] font-semibold border-l-2 border-[#e9c340] shadow-[-3px_0_10px_rgba(233,195,64,0.6)]'
                 : 'text-[#d0c6af] hover:bg-[#1f1b13] hover:text-[#eae2d3]'
             }`}
             onClick={() => controller.handleNavigate('/agenda')}
@@ -35,9 +35,9 @@ export function Sidebar() {
 
           <button
             type="button"
-            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-all ${
+            className={`w-full flex items-center gap-3 px-3.5 py-2.5 text-sm font-medium transition-all ${
               controller.currentRoute === '/caixa'
-                ? 'bg-[#2d2a20] text-[#e9c340] font-semibold border-l-2 border-[#e9c340]'
+                ? 'bg-[#2d2a20] text-[#e9c340] font-semibold border-l-2 border-[#e9c340] shadow-[-3px_0_10px_rgba(233,195,64,0.6)]'
                 : 'text-[#d0c6af] hover:bg-[#1f1b13] hover:text-[#eae2d3]'
             }`}
             onClick={() => controller.handleNavigate('/caixa')}
@@ -51,9 +51,9 @@ export function Sidebar() {
 
           <button
             type="button"
-            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-all ${
+            className={`w-full flex items-center gap-3 px-3.5 py-2.5 text-sm font-medium transition-all ${
               controller.currentRoute === '/profissionais'
-                ? 'bg-[#2d2a20] text-[#e9c340] font-semibold border-l-2 border-[#e9c340]'
+                ? 'bg-[#2d2a20] text-[#e9c340] font-semibold border-l-2 border-[#e9c340] shadow-[-3px_0_10px_rgba(233,195,64,0.6)]'
                 : 'text-[#d0c6af] hover:bg-[#1f1b13] hover:text-[#eae2d3]'
             }`}
             onClick={() => controller.handleNavigate('/profissionais')}
@@ -67,9 +67,9 @@ export function Sidebar() {
 
           <button
             type="button"
-            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-all ${
+            className={`w-full flex items-center gap-3 px-3.5 py-2.5 text-sm font-medium transition-all ${
               controller.currentRoute === '/clientes'
-                ? 'bg-[#2d2a20] text-[#e9c340] font-semibold border-l-2 border-[#e9c340]'
+                ? 'bg-[#2d2a20] text-[#e9c340] font-semibold border-l-2 border-[#e9c340] shadow-[-3px_0_10px_rgba(233,195,64,0.6)]'
                 : 'text-[#d0c6af] hover:bg-[#1f1b13] hover:text-[#eae2d3]'
             }`}
             onClick={() => controller.handleNavigate('/clientes')}
@@ -85,9 +85,9 @@ export function Sidebar() {
 
           <button
             type="button"
-            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-all ${
+            className={`w-full flex items-center gap-3 px-3.5 py-2.5 text-sm font-medium transition-all ${
               controller.currentRoute === '/servicos'
-                ? 'bg-[#2d2a20] text-[#e9c340] font-semibold border-l-2 border-[#e9c340]'
+                ? 'bg-[#2d2a20] text-[#e9c340] font-semibold border-l-2 border-[#e9c340] shadow-[-3px_0_10px_rgba(233,195,64,0.6)]'
                 : 'text-[#d0c6af] hover:bg-[#1f1b13] hover:text-[#eae2d3]'
             }`}
             onClick={() => controller.handleNavigate('/servicos')}
@@ -100,9 +100,9 @@ export function Sidebar() {
 
           <button
             type="button"
-            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-all ${
+            className={`w-full flex items-center gap-3 px-3.5 py-2.5 text-sm font-medium transition-all ${
               controller.currentRoute === '/comandas'
-                ? 'bg-[#2d2a20] text-[#e9c340] font-semibold border-l-2 border-[#e9c340]'
+                ? 'bg-[#2d2a20] text-[#e9c340] font-semibold border-l-2 border-[#e9c340] shadow-[-3px_0_10px_rgba(233,195,64,0.6)]'
                 : 'text-[#d0c6af] hover:bg-[#1f1b13] hover:text-[#eae2d3]'
             }`}
             onClick={() => controller.handleNavigate('/comandas')}
@@ -122,7 +122,7 @@ export function Sidebar() {
       <div className="border-t border-[#1e1e1e] pt-3">
         <button
           type="button"
-          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium text-[#99907b] hover:bg-[#1f1b13] hover:text-[#ffb4ab] transition-all"
+          className="w-full flex items-center gap-3 px-3.5 py-2.5 text-sm font-medium text-[#99907b] hover:bg-[#1f1b13] hover:text-[#ffb4ab] transition-all"
           onClick={controller.handleLogout}
         >
           <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">

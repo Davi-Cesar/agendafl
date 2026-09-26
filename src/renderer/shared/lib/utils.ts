@@ -59,3 +59,5 @@ export function calcularHorarioFim(inicio: string, duracaoMinutos: number): stri
   const fimM = totalMin % 60;
   return `${String(fimH).padStart(2, '0')}:${String(fimM).padStart(2, '0')}`;
 }
+
+export * from './formatters';

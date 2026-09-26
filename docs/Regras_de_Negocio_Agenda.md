@@ -179,3 +179,5 @@ Documento de levantamento funcional a partir da tela "Cadastro de Clientes", ace
 | RN-51 | Disponibiliza a ação "Ver Perfil" em cada linha da tabela. | Dar acesso direto ao histórico completo e aos dados detalhados daquele cliente, sem precisar buscá-lo novamente. |
 | RN-52 | Disponibiliza ícones de filtro e de exportação/download acima da tabela de clientes. | Permitir refinar a lista por critérios específicos (ex.: status, período) e extrair os dados para uso externo (planilhas, relatórios). |
 | RN-53 | Exibe paginação na parte inferior da tabela ("Exibindo 1-10 de 248 clientes", com números de página e setas de navegação). | Manter a performance e a legibilidade da tela mesmo com uma base grande de clientes, permitindo navegar por blocos de registros. |
+| RN-54 | Permite a ação "Remover Cliente" via Soft Delete (`removido_em`), cancelando reservas futuras e ocultando o cliente de buscas e listagens ativas, enquanto preserva o cadastro e histórico de comandas/atendimentos passados para conciliação e auditoria financeira. | Garantir a limpeza da agenda e a retenção legal/contábil do histórico financeiro do estabelecimento. |
+
