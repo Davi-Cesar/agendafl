@@ -38,6 +38,12 @@ module.exports = {
           DEFAULT: '#ffb4ab',
           container: '#93000a',
         },
+        border: {
+          DEFAULT: '#38342b',
+        },
+      },
+      boxShadow: {
+        sidebar: '4px 0 20px rgba(233, 195, 64, 0.12)',
       },
       fontFamily: {
         sora: ['Sora', 'sans-serif'],

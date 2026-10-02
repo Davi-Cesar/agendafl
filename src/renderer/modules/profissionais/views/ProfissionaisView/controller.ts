@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useProfissionaisStore } from '../../store/profissionais.store';
 
 export function useProfissionaisViewController() {
@@ -23,6 +23,8 @@ export function useProfissionaisViewController() {
   const salvarHorarios = useProfissionaisStore((s) => s.salvarHorarios);
   const replicarHorariosSemana = useProfissionaisStore((s) => s.replicarHorariosSemana);
   const removerExcecaoHorario = useProfissionaisStore((s) => s.removerExcecaoHorario);
+
+  const [filtroDias, setFiltroDias] = useState<'todos' | 'uteis' | 'fim_de_semana'>('todos');
 
   useEffect(() => {
     carregarProfissionais();
@@ -54,6 +56,22 @@ export function useProfissionaisViewController() {
     0: 'Dom',
   };
 
+  const diasSemanaInfo: Record<number, { sigla: string; nome: string; subtitulo: string; tipo: 'dia_util' | 'fim_de_semana' }> = {
+    1: { sigla: 'SEG', nome: 'Segunda-feira', subtitulo: 'Dia Útil', tipo: 'dia_util' },
+    2: { sigla: 'TER', nome: 'Terça-feira', subtitulo: 'Dia Útil', tipo: 'dia_util' },
+    3: { sigla: 'QUA', nome: 'Quarta-feira', subtitulo: 'Dia Útil', tipo: 'dia_util' },
+    4: { sigla: 'QUI', nome: 'Quinta-feira', subtitulo: 'Dia Útil', tipo: 'dia_util' },
+    5: { sigla: 'SEX', nome: 'Sexta-feira', subtitulo: 'Dia Útil', tipo: 'dia_util' },
+    6: { sigla: 'SÁB', nome: 'Sábado', subtitulo: 'Fim de Semana', tipo: 'fim_de_semana' },
+    0: { sigla: 'DOM', nome: 'Domingo', subtitulo: 'Fim de Semana', tipo: 'fim_de_semana' },
+  };
+
+  const diasExibidos = useMemo(() => {
+    if (filtroDias === 'uteis') return [1, 2, 3, 4, 5];
+    if (filtroDias === 'fim_de_semana') return [6, 0];
+    return [1, 2, 3, 4, 5, 6, 0];
+  }, [filtroDias]);
+
   return {
     profissionais: profissionaisFiltrados,
     totalRegistrados: profissionais.length,
@@ -61,6 +79,10 @@ export function useProfissionaisViewController() {
     servicosDoProfissional,
     horariosDoProfissional,
     diasSemanaNomes,
+    diasSemanaInfo,
+    diasExibidos,
+    filtroDias,
+    setFiltroDias,
     busca,
     setBusca,
     carregando,

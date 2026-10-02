@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 
-export type RoutePath = '/agenda' | '/caixa' | '/clientes' | '/servicos' | '/comandas' | '/profissionais';
+export type RoutePath = '/agenda' | '/caixa' | '/clientes' | '/servicos' | '/comandas' | '/profissionais' | (string & {});
 
 interface RouterState {
   currentRoute: RoutePath;
