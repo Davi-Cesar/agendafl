@@ -1,0 +1,74 @@
+[
+  {
+    "id": "2",
+    "name": "Maquiagem",
+    "name_es": "Maquillaje",
+    "price": 0,
+    "price_es": 0,
+    "imageUrl": "service2.jpg",
+    "displaySubserviceId": "73"
+  },
+  {
+    "id": "1",
+    "name": "Cabelo",
+    "name_es": "Cabello",
+    "price": 0,
+    "price_es": 0,
+    "imageUrl": "service1.jpg",
+    "displaySubserviceId": "216"
+  },
+  {
+    "id": "15",
+    "name": "Terapia",
+    "name_es": "Terapia",
+    "price": 0,
+    "price_es": 0,
+    "imageUrl": "service15.jpg",
+    "displaySubserviceId": "186"
+  },
+  {
+    "id": "4",
+    "name": "Estética Facial",
+    "name_es": "Estética Facial",
+    "price": 0,
+    "price_es": 0,
+    "imageUrl": "service4.jpg",
+    "displaySubserviceId": "154"
+  },
+  {
+    "id": "16",
+    "name": "Estética Corporal",
+    "name_es": "Estética Corporal",
+    "price": 0,
+    "price_es": 0,
+    "imageUrl": "service5.jpg",
+    "displaySubserviceId": "125"
+  },
+  {
+    "id": "17",
+    "name": "Estética Avançada",
+    "name_es": "Estética Avanzada",
+    "price": 0,
+    "price_es": 0,
+    "imageUrl": "service13.jpg",
+    "displaySubserviceId": "198"
+  },
+  {
+    "id": "11",
+    "name": "Manicure",
+    "name_es": "Manicura",
+    "price": 0,
+    "price_es": 0,
+    "imageUrl": "service11.jpg",
+    "displaySubserviceId": "376"
+  },
+  {
+    "id": "10",
+    "name": "Podologia",
+    "name_es": "Pedicura",
+    "price": 0,
+    "price_es": 0,
+    "imageUrl": "service10.jpg",
+    "displaySubserviceId": "377"
+  }
+]
