@@ -24,25 +24,9 @@ export function TitleBar() {
 
   return (
     <div
-      className="h-8 min-h-[32px] w-full bg-[#0d0b06] border-b border-[#262013] flex items-center justify-between px-3 select-none z-50 text-[#eae2d3]"
+      className="h-8 min-h-[32px] w-full bg-[#0d0b06] border-b border-[#262013] flex items-center justify-end select-none z-50 text-[#eae2d3]"
       style={{ WebkitAppRegion: 'drag' } as React.CSSProperties}
     >
-      {/* Esquerda: Logo pequeno e Nome do App */}
-      <div className="flex items-center gap-2">
-        <img
-          src="./assets/icon.png"
-          alt="Agenda FL"
-          className="w-4 h-4 object-contain rounded-sm"
-          onError={(e) => {
-            // Fallback se não encontrar caminho relativo
-            (e.target as HTMLImageElement).src = './icon.png';
-          }}
-        />
-        <span className="font-sora text-xs font-semibold tracking-wide text-[#e9c340]">
-          Agenda FL
-        </span>
-      </div>
-
       {/* Direita: Controles de Janela (Minimizar, Maximizar, Fechar) */}
       <div
         className="flex items-center h-full"
