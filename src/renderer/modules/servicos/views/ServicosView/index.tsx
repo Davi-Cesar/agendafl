@@ -2,14 +2,12 @@ import React from 'react';
 import { useServicosViewController } from './controller';
 import { ModalNovoServico } from '../../components/ModalNovoServico';
 import { ModalExcluirServico } from '../../components/ModalExcluirServico';
+import { Pagination } from '@shared/ui/Pagination';
 
 export function ServicosView() {
   const controller = useServicosViewController();
 
-  // Cálculos de Paginação
   const totalPaginas = Math.max(1, Math.ceil(controller.totalServicos / controller.itensPorPagina));
-  const inicioRegistro = controller.totalServicos === 0 ? 0 : (controller.paginaAtual - 1) * controller.itensPorPagina + 1;
-  const fimRegistro = Math.min(controller.paginaAtual * controller.itensPorPagina, controller.totalServicos);
 
   return (
     <div className="flex-1 flex flex-col h-full bg-[#110e06] text-[#eae2d3] font-inter overflow-hidden">
@@ -144,7 +142,7 @@ export function ServicosView() {
                           </td>
 
                           {/* Duração em minutos */}
-                          <td className="py-4 px-6 font-mono text-[#d0c6af]">
+                          <td className="py-4 px-6 font-inter text-xs text-[#eae2d3]">
                             {servico.duracaoMinutos} min
                           </td>
 
@@ -191,48 +189,17 @@ export function ServicosView() {
               </div>
             )}
 
-            {/* Rodapé de Paginação */}
-            <div className="px-6 py-4 border-t border-[#38342b] bg-[#110e06]/40 flex flex-col sm:flex-row sm:items-center justify-between gap-4 font-mono text-xs text-[#99907b]">
-              <div>
-                Exibindo {inicioRegistro}-{fimRegistro} de {controller.totalServicos} serviços
-              </div>
-
-              {/* Controles da Paginação */}
-              <div className="flex items-center gap-1.5">
-                <button
-                  type="button"
-                  disabled={controller.paginaAtual <= 1}
-                  onClick={() => controller.setPaginaAtual(controller.paginaAtual - 1)}
-                  className="w-8 h-8 rounded border border-[#38342b] flex items-center justify-center text-[#eae2d3] hover:border-[#e9c340] disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer transition-colors"
-                >
-                  ‹
-                </button>
-
-                {Array.from({ length: totalPaginas }, (_, i) => i + 1).map((pg) => (
-                  <button
-                    type="button"
-                    key={pg}
-                    onClick={() => controller.setPaginaAtual(pg)}
-                    className={`w-8 h-8 rounded border flex items-center justify-center font-mono text-xs transition-all cursor-pointer ${
-                      pg === controller.paginaAtual
-                        ? 'bg-[#2d2a20] border-[#e9c340] text-[#e9c340] font-bold shadow-xs'
-                        : 'border-[#38342b] text-[#99907b] hover:text-[#eae2d3] hover:border-[#e9c340]'
-                    }`}
-                  >
-                    {pg}
-                  </button>
-                ))}
-
-                <button
-                  type="button"
-                  disabled={controller.paginaAtual >= totalPaginas}
-                  onClick={() => controller.setPaginaAtual(controller.paginaAtual + 1)}
-                  className="w-8 h-8 rounded border border-[#38342b] flex items-center justify-center text-[#eae2d3] hover:border-[#e9c340] disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer transition-colors"
-                >
-                  ›
-                </button>
-              </div>
-            </div>
+            {/* Rodapé de Paginação Inteligente */}
+            <Pagination
+              paginaAtual={controller.paginaAtual}
+              totalPaginas={totalPaginas}
+              totalRegistros={controller.totalServicos}
+              itensPorPagina={controller.itensPorPagina}
+              opcoesItensPorPagina={[10, 15, 25, 50, 100]}
+              registroNome="serviços"
+              aoMudarPagina={controller.setPaginaAtual}
+              aoMudarItensPorPagina={controller.setItensPorPagina}
+            />
           </div>
         </div>
       </main>

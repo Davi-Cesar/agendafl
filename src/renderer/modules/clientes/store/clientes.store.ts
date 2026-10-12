@@ -29,6 +29,7 @@ interface ClientesStore {
   setBusca: (busca: string) => void;
   setDataAniversariantes: (dataStr: string) => void;
   setPaginaAtual: (pagina: number) => void;
+  setItensPorPagina: (itens: number) => void;
 
   carregarClientes: () => Promise<void>;
   salvarCliente: (dados: Partial<Cliente>) => Promise<Cliente>;
@@ -52,7 +53,7 @@ export const useClientesStore = create<ClientesStore>((set, get) => ({
   dataAniversariantes: hojeStr,
   busca: '',
   paginaAtual: 1,
-  itensPorPagina: 10,
+  itensPorPagina: 15,
 
   carregando: false,
   salvando: false,
@@ -81,6 +82,11 @@ export const useClientesStore = create<ClientesStore>((set, get) => ({
 
   setPaginaAtual: (pagina) => {
     set({ paginaAtual: pagina });
+    get().carregarClientes();
+  },
+
+  setItensPorPagina: (itens) => {
+    set({ itensPorPagina: itens, paginaAtual: 1 });
     get().carregarClientes();
   },
 

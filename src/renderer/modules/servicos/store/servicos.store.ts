@@ -7,6 +7,7 @@ interface ServicosStoreActions {
   setBusca: (busca: string) => void;
   setCategoriaIdFiltro: (categoriaId: string | null) => void;
   setPaginaAtual: (pagina: number) => void;
+  setItensPorPagina: (itens: number) => void;
 
   carregarServicos: () => Promise<void>;
   carregarCategorias: () => Promise<void>;
@@ -32,7 +33,7 @@ export const useServicosStore = create<UseServicosStore>((set, get) => ({
   busca: '',
   categoriaIdFiltro: null,
   paginaAtual: 1,
-  itensPorPagina: 10,
+  itensPorPagina: 15,
 
   carregando: false,
   salvando: false,
@@ -55,6 +56,11 @@ export const useServicosStore = create<UseServicosStore>((set, get) => ({
 
   setPaginaAtual: (pagina) => {
     set({ paginaAtual: pagina });
+    get().carregarServicos();
+  },
+
+  setItensPorPagina: (itens) => {
+    set({ itensPorPagina: itens, paginaAtual: 1 });
     get().carregarServicos();
   },
 

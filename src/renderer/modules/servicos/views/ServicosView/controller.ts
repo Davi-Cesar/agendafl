@@ -14,6 +14,7 @@ export function useServicosViewController() {
   const setBusca = useServicosStore((s) => s.setBusca);
   const setCategoriaIdFiltro = useServicosStore((s) => s.setCategoriaIdFiltro);
   const setPaginaAtual = useServicosStore((s) => s.setPaginaAtual);
+  const setItensPorPagina = useServicosStore((s) => s.setItensPorPagina);
   const carregarServicos = useServicosStore((s) => s.carregarServicos);
   const carregarCategorias = useServicosStore((s) => s.carregarCategorias);
 
@@ -46,6 +47,7 @@ export function useServicosViewController() {
     setBusca,
     setCategoriaIdFiltro,
     setPaginaAtual,
+    setItensPorPagina,
     handleLimparFiltros,
     formatarPrecoBR,
     abrirModalNovo,

@@ -20,6 +20,7 @@ export function useClientesViewController() {
   const setBusca = useClientesStore((s) => s.setBusca);
   const setDataAniversariantes = useClientesStore((s) => s.setDataAniversariantes);
   const setPaginaAtual = useClientesStore((s) => s.setPaginaAtual);
+  const setItensPorPagina = useClientesStore((s) => s.setItensPorPagina);
   const carregarClientes = useClientesStore((s) => s.carregarClientes);
 
   const abrirModalNovo = useClientesStore((s) => s.abrirModalNovo);
@@ -82,6 +83,7 @@ export function useClientesViewController() {
     setAbaAtiva,
     setBusca,
     setPaginaAtual,
+    setItensPorPagina,
     handleExportarCSV,
     handleFiltrarDataAniversariantes,
     handleAbrirWhatsApp,
