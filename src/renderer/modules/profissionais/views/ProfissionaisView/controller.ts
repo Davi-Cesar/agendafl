@@ -85,11 +85,23 @@ export function useProfissionaisViewController() {
     return [1, 2, 3, 4, 5, 6, 0];
   }, [filtroDias]);
 
+  const categoriasDoProfissional = useMemo(() => {
+    const mapa = new Map<string, { nome: string; totalServicos: number }>();
+    for (const s of servicosDoProfissional) {
+      const nome = s.categoriaNome || 'Geral';
+      const item = mapa.get(nome) || { nome, totalServicos: 0 };
+      item.totalServicos += 1;
+      mapa.set(nome, item);
+    }
+    return Array.from(mapa.values()).sort((a, b) => a.nome.localeCompare(b.nome));
+  }, [servicosDoProfissional]);
+
   return {
     profissionais: profissionaisFiltrados,
     totalRegistrados: profissionais.length,
     profissionalAtual,
     servicosDoProfissional,
+    categoriasDoProfissional,
     horariosDoProfissional,
     diasSemanaNomes,
     diasSemanaInfo,

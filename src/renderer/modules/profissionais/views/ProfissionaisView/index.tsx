@@ -148,7 +148,7 @@ export function ProfissionaisView() {
                       )}
                     </div>
                     {p.especialidade && (
-                      <span className="block font-mono text-[10px] text-[#e9c340] uppercase mt-0.5 tracking-wider truncate">
+                      <span className="block font-mono text-[10px] text-[#99907b] uppercase mt-0.5 tracking-wider truncate">
                         {p.especialidade}
                       </span>
                     )}
@@ -201,28 +201,43 @@ export function ProfissionaisView() {
                       </span>
                     </div>
 
+                    {controller.profissionalAtual.especialidade && (
+                      <p className="font-mono text-xs text-[#99907b] uppercase tracking-wider mt-1">
+                        {controller.profissionalAtual.especialidade}
+                      </p>
+                    )}
+
                     {controller.profissionalAtual.email && (
-                      <p className="font-inter text-xs text-[#99907b] mt-1">
+                      <p className="font-inter text-xs text-[#99907b]/80 mt-0.5">
                         {controller.profissionalAtual.email}
                       </p>
                     )}
 
-                    {/* Badges de Serviços Habilitados */}
+                    {/* Badges de Categorias Atendidas */}
                     <div className="flex flex-wrap items-center gap-2 mt-3">
-                      {controller.servicosDoProfissional.map((s) => (
+                      <span className="text-[11px] font-mono text-[#99907b] mr-1">
+                        Categorias:
+                      </span>
+                      {controller.categoriasDoProfissional.map((cat) => (
                         <span
-                          key={s.id}
-                          className="font-mono text-[10px] uppercase px-2.5 py-1 rounded-md bg-[#2d2a20] border border-[#38342b] text-[#e9c340] font-medium"
+                          key={cat.nome}
+                          className="font-mono text-[10px] uppercase px-2.5 py-1 rounded-md bg-[#2d2a20] border border-[#38342b] text-[#e9c340] font-semibold tracking-wider shadow-xs"
                         >
-                          {s.nome}
+                          {cat.nome} ({cat.totalServicos})
                         </span>
                       ))}
+                      {controller.categoriasDoProfissional.length === 0 && (
+                        <span className="font-mono text-xs text-[#99907b] italic">
+                          Nenhum serviço vinculado
+                        </span>
+                      )}
                       <button
                         type="button"
                         onClick={controller.handleAbrirServicos}
-                        className="font-mono text-[10px] uppercase px-2.5 py-1 rounded-md bg-[#110e06] border border-[#38342b] hover:border-[#e9c340] text-[#99907b] hover:text-[#e9c340] transition-colors cursor-pointer"
+                        className="font-mono text-[10px] uppercase px-2.5 py-1 rounded-md bg-[#110e06] border border-[#38342b] hover:border-[#e9c340] text-[#99907b] hover:text-[#e9c340] transition-colors cursor-pointer ml-1"
+                        title="Gerenciar serviços vinculados ao profissional"
                       >
-                        + Serviços
+                        + Serviços ({controller.servicosDoProfissional.length})
                       </button>
                     </div>
                   </div>
