@@ -15,7 +15,7 @@ export interface ProfissionalOption {
 export interface UseModalAdicionarServicoProps {
   aberto: boolean;
   onFechar: () => void;
-  onAdicionar: (descricao: string, profissional: string, valor: number) => void;
+  onAdicionar: (descricao: string, profissional: string, valor: number, servicoId?: string, profissionalId?: string) => void;
 }
 
 export function useModalAdicionarServicoController({
@@ -92,13 +92,14 @@ export function useModalAdicionarServicoController({
 
   const handleConfirmar = useCallback(() => {
     const srv = servicos.find((s) => s.id === servicoSelecionadoId);
+    const profObj = profissionais.find((p) => p.nome === profissionalSelecionado);
     const descricao = srv ? srv.nome : 'Serviço Adicional';
     const profNome = profissionalSelecionado || 'Profissional';
     const valor = valorCustomizado > 0 ? valorCustomizado : srv?.preco || 100;
 
-    onAdicionar(descricao, profNome, valor);
+    onAdicionar(descricao, profNome, valor, srv?.id, profObj?.id);
     onFechar();
-  }, [servicos, servicoSelecionadoId, profissionalSelecionado, valorCustomizado, onAdicionar, onFechar]);
+  }, [servicos, profissionais, servicoSelecionadoId, profissionalSelecionado, valorCustomizado, onAdicionar, onFechar]);
 
   return {
     carregando,

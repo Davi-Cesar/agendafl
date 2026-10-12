@@ -5,8 +5,9 @@ import { formatCurrency } from '@shared/lib/utils';
 
 export function DetalhesComandaView({ dados }: DetalhesComandaViewProps) {
   const controller = useDetalhesComandaViewController(dados);
+  const { dados: dadosComanda, itensParaExibir, temAniversariante } = controller;
 
-  const pagamentos = controller.dados?.pagamentos || [];
+  const pagamentos = dadosComanda?.pagamentos || [];
 
   return (
     <div className="flex-1 flex flex-col h-full bg-[#16130b] text-[#eae2d3] font-inter overflow-y-auto p-6">
@@ -21,7 +22,7 @@ export function DetalhesComandaView({ dados }: DetalhesComandaViewProps) {
             &larr; Voltar para Agenda
           </button>
           <h1 className="font-sora font-bold text-2xl text-[#eae2d3]">
-            Comanda {controller.dados?.comandaNumero || '#6094'}
+            Comanda {dadosComanda?.comandaNumero || '#0001'}
           </h1>
           <span className="bg-[#10b981]/15 text-[#10b981] border border-[#10b981]/40 font-mono text-[11px] px-3 py-0.5 rounded-full uppercase font-semibold">
             FINALIZADA
@@ -56,14 +57,22 @@ export function DetalhesComandaView({ dados }: DetalhesComandaViewProps) {
             <div className="grid grid-cols-2 gap-4 text-xs">
               <div>
                 <span className="block font-mono text-[10px] text-[#99907b] uppercase mb-1">CLIENTE</span>
-                <span className="font-medium text-[#eae2d3] text-sm">
-                  {controller.dados?.clienteNome || 'Cliente'}
-                </span>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="font-medium text-[#eae2d3] text-sm">
+                    {dadosComanda?.clienteNome || 'Cliente'}
+                  </span>
+                  {temAniversariante && (
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold bg-[#e9c340]/20 text-[#e9c340] border border-[#e9c340]/50 shadow-sm">
+                      <span>🎂</span>
+                      <span>Aniversariante</span>
+                    </span>
+                  )}
+                </div>
               </div>
               <div>
                 <span className="block font-mono text-[10px] text-[#99907b] uppercase mb-1">HORÁRIO</span>
                 <span className="font-mono text-[#eae2d3] text-sm">
-                  {controller.dados?.horarioInicio || '09:30'} às {controller.dados?.horarioFim || '11:00'}
+                  {dadosComanda?.horarioInicio || '09:00'} às {dadosComanda?.horarioFim || '10:00'}
                 </span>
               </div>
             </div>
@@ -79,27 +88,81 @@ export function DetalhesComandaView({ dados }: DetalhesComandaViewProps) {
                     <th className="pb-3 px-2 font-medium">DESCRIÇÃO</th>
                     <th className="pb-3 px-2 font-medium">PROFISSIONAL</th>
                     <th className="pb-3 px-2 font-medium text-center">QTD</th>
+                    <th className="pb-3 px-2 font-medium text-center">DESCONTO</th>
                     <th className="pb-3 px-2 font-medium text-right">TOTAL</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[#38342b]/50">
-                  {(controller.dados?.itens || []).map((item: any) => (
-                    <tr key={item.id} className="hover:bg-[#2d2a20]/40 transition-colors">
-                      <td className="py-3 px-2 font-medium text-[#eae2d3]">{item.descricao}</td>
-                      <td className="py-3 px-2 text-[#d0c6af]">{item.profissional}</td>
-                      <td className="py-3 px-2 text-center font-mono text-[#eae2d3]">{item.quantidade}</td>
-                      <td className="py-3 px-2 text-right font-mono font-semibold text-[#e9c340]">
-                        {formatCurrency(item.quantidade * item.valorUnitario)}
-                      </td>
-                    </tr>
-                  ))}
-                  {(!controller.dados?.itens || controller.dados.itens.length === 0) && (
-                    <tr>
-                      <td colSpan={4} className="py-4 text-center text-[#99907b] text-xs">
-                        {controller.dados?.servico || 'Serviço realizado'} — R$ {formatCurrency(controller.dados?.valorTotal || controller.dados?.valor || 0)}
-                      </td>
-                    </tr>
-                  )}
+                  {itensParaExibir.map((item: any) => {
+                    const qtd = Number(item.quantidade || 1);
+                    const precoUnit = Number(item.valorUnitario || item.preco_unitario || item.valor || 0);
+                    const valBruto = qtd * precoUnit;
+
+                    let descValor = 0;
+                    if (item.desconto) {
+                      if (item.desconto.tipo === 'percentual') {
+                        descValor = valBruto * (item.desconto.valor / 100);
+                      } else {
+                        descValor = Math.min(valBruto, item.desconto.valor);
+                      }
+                    } else if (item.desconto_valor) {
+                      if (item.desconto_tipo === 'percentual') {
+                        descValor = valBruto * (item.desconto_valor / 100);
+                      } else {
+                        descValor = Math.min(valBruto, item.desconto_valor);
+                      }
+                    }
+
+                    const valLiquido = Math.max(0, valBruto - descValor);
+                    const temDesconto = descValor > 0;
+                    const isAniversario =
+                      item.desconto?.origem === 'aniversario' || item.desconto_origem === 'aniversario';
+
+                    return (
+                      <tr key={item.id} className="hover:bg-[#2d2a20]/40 transition-colors">
+                        <td className="py-3 px-2 font-medium text-[#eae2d3]">
+                          {item.descricao || item.servicos?.nome || 'Serviço'}
+                        </td>
+                        <td className="py-3 px-2 text-[#d0c6af]">
+                          {item.profissional || item.profissionais?.nome || 'Profissional'}
+                        </td>
+                        <td className="py-3 px-2 text-center font-mono text-[#eae2d3]">
+                          {qtd}
+                        </td>
+                        <td className="py-3 px-2 text-center">
+                          {temDesconto ? (
+                            isAniversario ? (
+                              <span className="px-2 py-0.5 rounded bg-[#e9c340]/20 text-[#e9c340] border border-[#e9c340]/40 font-mono text-[11px] font-semibold">
+                                🎂 Aniversário (-10%)
+                              </span>
+                            ) : (
+                              <span className="px-2 py-0.5 rounded bg-[#2d2a20] text-[#d0c6af] border border-[#38342b] font-mono text-[11px] font-semibold">
+                                🏷️ -{formatCurrency(descValor)}
+                              </span>
+                            )
+                          ) : (
+                            <span className="text-[#99907b] text-[11px] font-mono">—</span>
+                          )}
+                        </td>
+                        <td className="py-3 px-2 text-right font-mono font-semibold">
+                          {temDesconto ? (
+                            <div className="flex flex-col items-end">
+                              <span className="text-[10px] text-[#99907b] line-through font-normal">
+                                {formatCurrency(valBruto)}
+                              </span>
+                              <span className="text-[#e9c340]">
+                                {formatCurrency(valLiquido)}
+                              </span>
+                            </div>
+                          ) : (
+                            <span className="text-[#e9c340]">
+                              {formatCurrency(valBruto)}
+                            </span>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
@@ -115,13 +178,13 @@ export function DetalhesComandaView({ dados }: DetalhesComandaViewProps) {
               <div className="flex justify-between items-center text-[#d0c6af]">
                 <span>Subtotal:</span>
                 <span className="font-mono text-[#eae2d3]">
-                  {formatCurrency(controller.dados?.subtotal || controller.dados?.valorTotal || 0)}
+                  {formatCurrency(dadosComanda?.subtotal || dadosComanda?.valorTotal || dadosComanda?.valor || 0)}
                 </span>
               </div>
               <div className="flex justify-between items-center text-[#d0c6af]">
                 <span>Desconto:</span>
                 <span className="font-mono text-[#eae2d3]">
-                  {formatCurrency(controller.dados?.desconto || 0)}
+                  {formatCurrency(dadosComanda?.desconto || 0)}
                 </span>
               </div>
             </div>
@@ -129,7 +192,7 @@ export function DetalhesComandaView({ dados }: DetalhesComandaViewProps) {
             <div className="flex justify-between items-center pt-1 font-sora font-bold text-base text-[#eae2d3]">
               <span>Total Quitado:</span>
               <span className="font-mono text-xl text-[#10b981]">
-                {formatCurrency(controller.dados?.valorTotal || controller.dados?.valor || 0)}
+                {formatCurrency(dadosComanda?.valorTotal || dadosComanda?.valor || 0)}
               </span>
             </div>
 
@@ -140,20 +203,36 @@ export function DetalhesComandaView({ dados }: DetalhesComandaViewProps) {
               </span>
               {pagamentos.length > 0 ? (
                 pagamentos.map((p: any, idx: number) => {
+                  let label = p.detalheConta || p.forma;
                   const opt = FORMAS_PAGAMENTO_OPTIONS.find((o) => o.id === p.forma);
+                  if (opt) {
+                    label = opt.label;
+                  } else if (p.forma === 'dinheiro') {
+                    label = 'DINHEIRO';
+                  } else if (p.forma === 'cartao_credito' || p.forma === 'credito') {
+                    label = 'CARTÃO CRÉDITO';
+                  } else if (p.forma === 'cartao_debito' || p.forma === 'debito') {
+                    label = 'CARTÃO DÉBITO';
+                  } else if (p.forma === 'pix') {
+                    label = p.detalheConta || 'PIX';
+                  }
+
                   return (
                     <div
                       key={idx}
                       className="flex items-center justify-between bg-[#110e06] border border-[#10b981]/40 rounded px-3 py-2 text-xs font-mono"
                     >
-                      <span className="text-[#10b981] font-bold">✓ {opt?.label || p.forma}</span>
+                      <span className="text-[#10b981] font-bold">✓ {label}</span>
                       <span className="text-[#eae2d3]">{formatCurrency(p.valor)}</span>
                     </div>
                   );
                 })
               ) : (
-                <div className="bg-[#110e06] border border-[#10b981]/40 rounded px-3 py-2 text-xs font-mono text-[#10b981] font-bold text-center">
-                  ✓ REGISTRADO NO CAIXA
+                <div className="flex items-center justify-between bg-[#110e06] border border-[#10b981]/40 rounded px-3 py-2 text-xs font-mono">
+                  <span className="text-[#10b981] font-bold">✓ REGISTRADO NO CAIXA</span>
+                  <span className="text-[#eae2d3]">
+                    {formatCurrency(dadosComanda?.valorTotal || dadosComanda?.valor || 0)}
+                  </span>
                 </div>
               )}
             </div>

@@ -23,7 +23,10 @@ export function useProfissionaisViewController() {
   const salvarHorarios = useProfissionaisStore((s) => s.salvarHorarios);
   const replicarHorariosSemana = useProfissionaisStore((s) => s.replicarHorariosSemana);
   const removerExcecaoHorario = useProfissionaisStore((s) => s.removerExcecaoHorario);
+  const setModalExcluirAberto = useProfissionaisStore((s) => s.setModalExcluirAberto);
 
+  const filtroStatus = useProfissionaisStore((s) => s.filtroStatus);
+  const setFiltroStatus = useProfissionaisStore((s) => s.setFiltroStatus);
   const [filtroDias, setFiltroDias] = useState<'todos' | 'uteis' | 'fim_de_semana'>('todos');
 
   useEffect(() => {
@@ -32,6 +35,7 @@ export function useProfissionaisViewController() {
 
   const profissionaisFiltrados = useMemo(() => {
     return profissionais.filter((p) => {
+      if (filtroStatus !== 'todos' && p.status !== filtroStatus) return false;
       if (!busca.trim()) return true;
       const b = busca.toLowerCase();
       return (
@@ -40,7 +44,16 @@ export function useProfissionaisViewController() {
         (p.cpf && p.cpf.includes(b))
       );
     });
-  }, [profissionais, busca]);
+  }, [profissionais, busca, filtroStatus]);
+
+  useEffect(() => {
+    if (profissionaisFiltrados.length > 0) {
+      const existe = profissionaisFiltrados.some((p) => p.id === profissionalSelecionadoId);
+      if (!existe) {
+        setProfissionalSelecionadoId(profissionaisFiltrados[0].id);
+      }
+    }
+  }, [profissionaisFiltrados, profissionalSelecionadoId, setProfissionalSelecionadoId]);
 
   const profissionalAtual = useMemo(() => {
     return profissionais.find((p) => p.id === profissionalSelecionadoId) || null;
@@ -80,6 +93,8 @@ export function useProfissionaisViewController() {
     horariosDoProfissional,
     diasSemanaNomes,
     diasSemanaInfo,
+    filtroStatus,
+    setFiltroStatus,
     diasExibidos,
     filtroDias,
     setFiltroDias,
@@ -97,7 +112,9 @@ export function useProfissionaisViewController() {
     handleAbrirExcecao: (diaSemana: number) => setModalExcecaoAberto(true, diaSemana),
     removerExcecaoHorario,
     toggleStatusProfissional,
-    excluirProfissional,
+    handleAbrirModalExcluir: (profissional: any) => {
+      if (profissional) setModalExcluirAberto(true, profissional);
+    },
     atualizarHorarioSemanal,
     salvarHorarios,
     replicarHorariosSemana,

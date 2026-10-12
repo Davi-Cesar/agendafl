@@ -8,22 +8,50 @@ import {
   type CriarAgendamentoInput,
 } from '../schemas/agendamento.schema';
 
-export async function buscarProfissionais(): Promise<Profissional[]> {
+export async function buscarProfissionais(dataStr?: string): Promise<Profissional[]> {
   const { data, error } = await supabase
     .from('profissionais')
     .select('id, nome, especialidade')
-    .eq('status', 'ativo');
+    .eq('status', 'ativo')
+    .or('especialidade.neq.__removido__,especialidade.is.null')
+    .order('nome', { ascending: true });
 
   if (error) {
     console.error('Erro ao buscar profissionais:', error);
     throw new Error(`Erro ao buscar profissionais: ${error.message}`);
   }
 
-  return (data ?? []).map((p) => ({
+  const resultado: Profissional[] = (data ?? []).map((p) => ({
     id: p.id,
     nome: p.nome,
     especialidade: p.especialidade || '',
   }));
+
+  // Se uma data for informada, garante que profissionais inativos que possuem atendimentos
+  // registrados nessa data continuem visíveis na grade para histórico e conferência
+  if (dataStr) {
+    try {
+      const { data: ags } = await supabase
+        .from('agendamentos')
+        .select('profissional_id, profissionais (id, nome, especialidade)')
+        .eq('data', dataStr);
+
+      (ags ?? []).forEach((row: any) => {
+        const p = row.profissionais;
+        if (p && !resultado.some((item) => item.id === p.id)) {
+          resultado.push({
+            id: p.id,
+            nome: `${p.nome} (Inativo)`,
+            especialidade: p.especialidade === '__removido__' ? '' : (p.especialidade || ''),
+          });
+        }
+      });
+    } catch (e) {
+      console.warn('Aviso ao carregar profissionais históricos do dia:', e);
+    }
+  }
+
+  return resultado;
 }
 
 export async function buscarHorariosEExcecoesDosProfissionais(): Promise<{
@@ -114,11 +142,12 @@ export async function buscarAgendamentosDoDia(dataStr: string): Promise<Agendame
       status,
       observacoes,
       clientes (nome),
-      servicos (nome),
+      servicos (nome, preco_padrao),
       comandas (
         id,
         numero_sequencial,
-        status
+        status,
+        valor_total
       )
     `)
     .eq('data', dataStr);
@@ -140,13 +169,16 @@ export async function buscarAgendamentosDoDia(dataStr: string): Promise<Agendame
     const comandaId = cmd?.id || undefined;
     const comandaNumero = cmd ? `#${String(cmd.numero_sequencial || 1).padStart(4, '0')}` : undefined;
     const comandaStatus = cmd ? (cmd.status === 'aberta' ? 'rascunho' : cmd.status) : undefined;
+    const valor = cmd?.valor_total != null ? Number(cmd.valor_total) : (row.servicos?.preco_padrao != null ? Number(row.servicos.preco_padrao) : undefined);
 
     return AgendamentoSchema.parse({
       id: row.id,
       profissionalId: row.profissional_id,
       clienteId: row.cliente_id || undefined,
       clienteNome,
+      servicoId: row.servico_id || undefined,
       servico: servicoNome,
+      valor,
       data: row.data,
       horarioInicio: hInicio,
       horarioFim: hFim,
@@ -218,7 +250,9 @@ export async function salvarNovoAgendamento(input: CriarAgendamentoInput): Promi
   return AgendamentoSchema.parse({
     id: data.id,
     profissionalId: data.profissional_id,
+    clienteId: data.cliente_id || undefined,
     clienteNome: valid.clienteNome,
+    servicoId: data.servico_id || undefined,
     servico: valid.servico,
     data: data.data,
     horarioInicio: valid.horarioInicio,

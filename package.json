@@ -1,15 +1,18 @@
 {
   "name": "agendafl",
   "version": "1.0.0",
-  "description": "FL Agenda — Aplicativo Desktop de Agenda para Estética e Beleza",
+  "description": "Agenda FL — Aplicativo Desktop de Agenda e Gestão para Estética e Beleza",
   "main": "dist/main/main.js",
   "scripts": {
     "start": "npm run build && electron .",
     "build:css": "tailwindcss -i src/renderer/shared/styles/global.css -o dist/renderer/styles.css --minify",
     "dev": "npm run build && electron . --enable-logging",
-    "build": "tsc && npm run build:css && esbuild src/renderer/app.tsx --bundle --outfile=dist/renderer/app.js --platform=browser --define:process.env.SUPABASE_URL='\"https://jwtvrbifxeaudizamunl.supabase.co\"' --define:process.env.SUPABASE_ANON_KEY='\"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imp3dHZyYmlmeGVhdWRpemFtdW5sIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODYyODM0NzgsImV4cCI6MjEwMTg1OTQ3OH0.D1S4YxbvcXDvZ0_Pdc0kR6vkBmXvdpZ8ID3zKaW7TbA\"' && node -e \"fs.cpSync('src/renderer/index.html', 'dist/renderer/index.html')\"",
+    "build": "tsc && npm run build:css && esbuild src/renderer/app.tsx --bundle --outfile=dist/renderer/app.js --platform=browser --define:process.env.SUPABASE_URL='\"https://jwtvrbifxeaudizamunl.supabase.co\"' --define:process.env.SUPABASE_ANON_KEY='\"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imp3dHZyYmlmeGVhdWRpemFtdW5sIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODYyODM0NzgsImV4cCI6MjEwMTg1OTQ3OH0.D1S4YxbvcXDvZ0_Pdc0kR6vkBmXvdpZ8ID3zKaW7TbA\"' && node -e \"fs.cpSync('src/renderer/index.html', 'dist/renderer/index.html'); if(fs.existsSync('src/renderer/assets')) fs.cpSync('src/renderer/assets', 'dist/renderer/assets', {recursive: true})\"",
     "serve": "node server.js",
-    "watch": "tsc --watch"
+    "watch": "tsc --watch",
+    "dist": "npm run build && electron-builder --win --publish never",
+    "publish:update": "node scripts/publish-update.js",
+    "release": "npm run dist && npm run publish:update"
   },
   "keywords": [
     "electron",
@@ -27,6 +30,7 @@
     "@types/react-dom": "^18.3.0",
     "autoprefixer": "^10.5.4",
     "electron": "^31.3.1",
+    "electron-builder": "^26.15.3",
     "esbuild": "^0.23.0",
     "pg": "^8.23.0",
     "postcss": "^8.5.26",
@@ -36,9 +40,39 @@
   "dependencies": {
     "@supabase/supabase-js": "^2.109.0",
     "dotenv": "^17.4.2",
+    "electron-updater": "^6.8.9",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "zod": "^4.4.3",
     "zustand": "^5.0.14"
+  },
+  "build": {
+    "appId": "com.agendafl.app",
+    "productName": "Agenda FL",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist/**/*",
+      "!dist/**/*.map",
+      "!dist/**/*.d.ts",
+      "assets/**/*",
+      "package.json"
+    ],
+    "win": {
+      "target": "nsis",
+      "icon": "assets/icon.ico",
+      "artifactName": "Agenda-FL-Setup-${version}.${ext}"
+    },
+    "nsis": {
+      "oneClick": true,
+      "perMachine": false
+    },
+    "publish": [
+      {
+        "provider": "generic",
+        "url": "https://jwtvrbifxeaudizamunl.supabase.co/storage/v1/object/public/updates"
+      }
+    ]
   }
 }

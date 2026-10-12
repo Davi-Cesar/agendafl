@@ -72,6 +72,7 @@ export const useComandasStore = create<ComandasStore>((set, get) => ({
       finalComandaNumero = res.comandaNumero;
     } catch (err) {
       console.error('Erro ao salvar finalização no Supabase:', err);
+      throw err;
     }
 
     const itemAtualizado: ComandaListItem = {

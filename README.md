@@ -1,4 +1,4 @@
-# FL Agenda — Desktop (Electron + TypeScript)
+# Agenda FL — Desktop (Electron + TypeScript)
 
 Sistema de gerenciamento para estética e beleza. Aplicativo desktop construído com **Electron** e **TypeScript**, seguindo arquitetura **Vertical Slice**.
 

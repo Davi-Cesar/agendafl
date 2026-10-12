@@ -23,6 +23,7 @@ interface ProfissionaisStore {
   servicosDoProfissional: ServicoOption[];
   horariosDoProfissional: ProfissionalHorario[];
   todosServicos: ServicoOption[];
+  categorias: { id: string; nome: string }[];
 
   filtroStatus: FiltroStatusProfissional;
   busca: string;
@@ -33,6 +34,9 @@ interface ProfissionaisStore {
   modalNovoAberto: boolean;
   modalServicosAberto: boolean;
   modalExcecaoAberto: boolean;
+  modalExcluirAberto: boolean;
+  profissionalParaExcluir: Profissional | null;
+  salvandoExclusao: boolean;
   diaExcecaoSelecionado: number | null;
   modalExcecaoConfig: ModalExcecaoConfig;
   profissionalParaEditar: Profissional | null;
@@ -44,10 +48,12 @@ interface ProfissionaisStore {
   setModalServicosAberto: (aberto: boolean) => void;
   setModalExcecaoAberto: (aberto: boolean, diaSemana?: number | null) => void;
   setModalExcecaoConfig: (config: Partial<ModalExcecaoConfig>) => void;
+  setModalExcluirAberto: (aberto: boolean, profissional?: Profissional | null) => void;
+  confirmarExclusaoProfissional: () => Promise<void>;
 
   carregarProfissionais: () => Promise<void>;
   carregarDetalhesProfissional: (id: string) => Promise<void>;
-  salvarProfissional: (dados: Partial<Profissional>) => Promise<Profissional>;
+  salvarProfissional: (dados: Partial<Profissional>, servicoIds?: string[]) => Promise<Profissional>;
   toggleStatusProfissional: (id: string) => Promise<void>;
   excluirProfissional: (id: string) => Promise<void>;
 
@@ -67,8 +73,9 @@ export const useProfissionaisStore = create<ProfissionaisStore>((set, get) => ({
   servicosDoProfissional: [],
   horariosDoProfissional: [],
   todosServicos: [],
+  categorias: [],
 
-  filtroStatus: 'todos',
+  filtroStatus: 'ativo',
   busca: '',
   carregando: false,
   salvandoHorarios: false,
@@ -77,6 +84,9 @@ export const useProfissionaisStore = create<ProfissionaisStore>((set, get) => ({
   modalNovoAberto: false,
   modalServicosAberto: false,
   modalExcecaoAberto: false,
+  modalExcluirAberto: false,
+  profissionalParaExcluir: null,
+  salvandoExclusao: false,
   diaExcecaoSelecionado: null,
   modalExcecaoConfig: { aberto: false },
   profissionalParaEditar: null,
@@ -108,18 +118,42 @@ export const useProfissionaisStore = create<ProfissionaisStore>((set, get) => ({
     }));
   },
 
+  setModalExcluirAberto: (aberto, profissional = null) => {
+    set({ modalExcluirAberto: aberto, profissionalParaExcluir: profissional });
+  },
+
+  confirmarExclusaoProfissional: async () => {
+    const prof = get().profissionalParaExcluir;
+    if (!prof) return;
+    set({ salvandoExclusao: true });
+    try {
+      await get().excluirProfissional(prof.id);
+      set({ modalExcluirAberto: false, profissionalParaExcluir: null, salvandoExclusao: false });
+    } catch (err) {
+      set({ salvandoExclusao: false });
+      throw err;
+    }
+  },
+
   carregarProfissionais: async () => {
     set({ carregando: true });
     try {
-      const lista = await service.buscarProfissionais();
-      const todosServ = await service.buscarTodosServicos();
+      const [lista, todosServ, cats] = await Promise.all([
+        service.buscarProfissionais(),
+        service.buscarTodosServicos(),
+        service.buscarCategoriasServicos(),
+      ]);
       
-      set({ profissionais: lista, todosServicos: todosServ, carregando: false });
+      set({ profissionais: lista, todosServicos: todosServ, categorias: cats, carregando: false });
 
       const atualId = get().profissionalSelecionadoId;
-      if (!atualId && lista.length > 0) {
-        set({ profissionalSelecionadoId: lista[0].id });
-        get().carregarDetalhesProfissional(lista[0].id);
+      const existeAtual = lista.some((p) => p.id === atualId);
+      if (!existeAtual) {
+        const novoId = lista[0]?.id || null;
+        set({ profissionalSelecionadoId: novoId });
+        if (novoId) {
+          get().carregarDetalhesProfissional(novoId);
+        }
       }
     } catch (err) {
       console.error('Erro ao carregar profissionais:', err);
@@ -139,8 +173,11 @@ export const useProfissionaisStore = create<ProfissionaisStore>((set, get) => ({
     }
   },
 
-  salvarProfissional: async (dados) => {
+  salvarProfissional: async (dados, servicoIds) => {
     const salvo = await service.salvarProfissionalNoSupabase(dados);
+    if (servicoIds !== undefined) {
+      await service.salvarServicosDoProfissional(salvo.id, servicoIds);
+    }
     await get().carregarProfissionais();
     set({ profissionalSelecionadoId: salvo.id });
     await get().carregarDetalhesProfissional(salvo.id);
@@ -168,17 +205,26 @@ export const useProfissionaisStore = create<ProfissionaisStore>((set, get) => ({
   excluirProfissional: async (id) => {
     try {
       await service.excluirProfissionalNoSupabase(id);
-      const restante = get().profissionais.filter((p) => p.id !== id);
-      set({
-        profissionais: restante,
-        profissionalSelecionadoId: restante[0]?.id || null,
+      set((state) => {
+        const restantes = state.profissionais.filter((p) => p.id !== id);
+        const novoSelecionadoId =
+          state.profissionalSelecionadoId === id
+            ? (restantes[0]?.id || null)
+            : state.profissionalSelecionadoId;
+
+        return {
+          profissionais: restantes,
+          profissionalSelecionadoId: novoSelecionadoId,
+        };
       });
-      if (restante[0]) {
-        get().carregarDetalhesProfissional(restante[0].id);
+      const selId = get().profissionalSelecionadoId;
+      if (selId) {
+        get().carregarDetalhesProfissional(selId);
       }
       eventBus.emit('profissionais:horarios_atualizados', { id });
     } catch (err) {
-      console.error('Erro ao excluir profissional:', err);
+      console.error('Erro ao remover profissional:', err);
+      throw err;
     }
   },
 

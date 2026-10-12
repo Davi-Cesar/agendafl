@@ -71,7 +71,23 @@ export function useComandasViewController() {
   const handleItemClick = useCallback(
     (item: ComandaListItem) => {
       if (item.comandaStatus === 'finalizada') {
-        setComandaAtivaView({ tipo: 'detalhes', dados: item });
+        const itemComItens = {
+          ...item,
+          valorTotal: item.valor,
+          subtotal: item.valor,
+          desconto: 0,
+          itens: [
+            {
+              id: `item-${item.comandaId}`,
+              descricao: item.servico,
+              profissional: item.profissionalNome,
+              quantidade: 1,
+              valorUnitario: item.valor,
+              desconto: null,
+            },
+          ],
+        };
+        setComandaAtivaView({ tipo: 'detalhes', dados: itemComItens });
       } else {
         setComandaAtivaView({ tipo: 'criar', dados: item });
       }

@@ -76,14 +76,23 @@ export interface SalvarComandaPayload {
   desconto: number;
   valorTotal: number;
   itens?: Array<{
+    id?: string;
+    servicoId?: string;
+    profissionalId?: string;
     descricao: string;
     profissional: string;
     quantidade: number;
     valorUnitario: number;
+    desconto?: {
+      tipo: 'percentual' | 'valor_fixo';
+      valor: number;
+      origem: 'aniversario' | 'manual';
+    } | null;
   }>;
   pagamentos?: Array<{
     forma: string;
     valor: number;
+    detalheConta?: string;
   }>;
 }
 
@@ -130,7 +139,100 @@ export async function finalizarComandaNoSupabase(
     .order('aberto_em', { ascending: false })
     .maybeSingle();
 
-  // 3. Insere a comanda no Supabase
+  // 3. Resolve servicos e profissionais para os itens
+  const [{ data: listaServicos }, { data: listaProfissionais }] = await Promise.all([
+    supabase.from('servicos').select('id, nome').eq('ativo', true),
+    supabase.from('profissionais').select('id, nome').eq('status', 'ativo'),
+  ]);
+
+  const itensResolvidos = (payload.itens || []).map((item) => {
+    const srv = (listaServicos || []).find(
+      (s) => s.nome.toLowerCase() === item.descricao.toLowerCase()
+    );
+    const prof = (listaProfissionais || []).find(
+      (p) => p.nome.toLowerCase() === item.profissional.toLowerCase()
+    );
+
+    const servicoId = item.servicoId || srv?.id || (listaServicos && listaServicos[0]?.id) || '00000000-0000-0000-0000-000000000000';
+    const profissionalId = item.profissionalId || prof?.id || (listaProfissionais && listaProfissionais[0]?.id) || '00000000-0000-0000-0000-000000000000';
+
+    return {
+      servico_id: servicoId,
+      profissional_id: profissionalId,
+      valor_unitario: item.valorUnitario,
+      quantidade: item.quantidade,
+      comissao_percentual: 60.0,
+      desconto_tipo: item.desconto?.tipo || null,
+      desconto_valor: item.desconto?.valor || null,
+      desconto_origem: item.desconto?.origem || null,
+    };
+  });
+
+  const pagamentosResolvidos = (payload.pagamentos || []).map((pg) => {
+    let formaPg: 'dinheiro' | 'pix' | 'cartao_credito' | 'cartao_debito' = 'pix';
+    let detalheConta: string | undefined = undefined;
+
+    switch (pg.forma) {
+      case 'pix_bricia':
+        formaPg = 'pix';
+        detalheConta = 'PIX Bricia';
+        break;
+      case 'pix_flavia':
+        formaPg = 'pix';
+        detalheConta = 'PIX Flavia';
+        break;
+      case 'credito':
+        formaPg = 'cartao_credito';
+        break;
+      case 'debito':
+        formaPg = 'cartao_debito';
+        break;
+      case 'dinheiro':
+        formaPg = 'dinheiro';
+        break;
+      default:
+        formaPg = 'pix';
+    }
+
+    return {
+      forma_pagamento: formaPg,
+      valor: pg.valor,
+      detalhe_conta: detalheConta || null,
+    };
+  });
+
+  // 4. Executa a finalização atômica via RPC no Supabase
+  const rpcPayload = {
+    cliente_id: resolvedClienteId,
+    agendamento_id: resolvedAgendamentoId,
+    caixa_id: caixaAtivo?.id || null,
+    subtotal: payload.subtotal,
+    desconto: payload.desconto,
+    valor_total: payload.valorTotal,
+    itens: itensResolvidos,
+    pagamentos: pagamentosResolvidos,
+  };
+
+  const { data: rpcData, error: rpcError } = await supabase.rpc('finalizar_comanda_atomica', {
+    p_payload: rpcPayload,
+  });
+
+  if (!rpcError && rpcData?.sucesso) {
+    return {
+      comandaId: rpcData.comanda_id,
+      comandaNumero: rpcData.comanda_numero,
+    };
+  }
+
+  // Se o erro for de regra de negócio (ex: cupom já utilizado, não é aniversariante), relança o erro
+  if (rpcError && !rpcError.message.includes('does not exist') && rpcError.code !== '42883') {
+    console.error('Erro na RPC finalizar_comanda_atomica:', rpcError);
+    throw new Error(rpcError.message);
+  }
+
+  // 5. Fallback para inserção direta caso a migration da RPC ainda não tenha sido rodada no banco
+  console.warn('RPC finalizar_comanda_atomica não encontrada no banco. Aplicando persistência direta com fallback:', rpcError?.message);
+
   const { data: novaComanda, error: errComanda } = await supabase
     .from('comandas')
     .insert({
@@ -155,93 +257,53 @@ export async function finalizarComandaNoSupabase(
   const numFormatado = String(novaComanda.numero_sequencial || 1).padStart(4, '0');
   const comandaNumero = `#${numFormatado}`;
 
-  // 4. Insere itens da comanda se existirem
-  if (payload.itens && payload.itens.length > 0) {
-    const [{ data: listaServicos }, { data: listaProfissionais }] = await Promise.all([
-      supabase.from('servicos').select('id, nome').eq('ativo', true),
-      supabase.from('profissionais').select('id, nome').eq('status', 'ativo'),
-    ]);
-
-    const itensParaInserir: Array<{
-      comanda_id: string;
-      servico_id: string;
-      profissional_id: string;
-      preco_unitario: number;
-      quantidade: number;
-      comissao_percentual: number;
-      valor_comissao: number;
-    }> = [];
-
-    for (const item of payload.itens) {
-      const srv = (listaServicos || []).find(
-        (s) => s.nome.toLowerCase() === item.descricao.toLowerCase()
-      );
-      const prof = (listaProfissionais || []).find(
-        (p) => p.nome.toLowerCase() === item.profissional.toLowerCase()
-      );
-
-      const servicoId = srv?.id || (listaServicos && listaServicos[0]?.id);
-      const profissionalId = prof?.id || (listaProfissionais && listaProfissionais[0]?.id);
-
-      if (servicoId && profissionalId) {
-        const pctComissao = 50.0;
-        const valComissao = item.valorUnitario * item.quantidade * (pctComissao / 100);
-
-        itensParaInserir.push({
-          comanda_id: comandaId,
-          servico_id: servicoId,
-          profissional_id: profissionalId,
-          preco_unitario: item.valorUnitario,
-          quantidade: item.quantidade,
-          comissao_percentual: pctComissao,
-          valor_comissao: valComissao,
-        });
+  if (itensResolvidos.length > 0) {
+    const itensParaInserir = itensResolvidos.map((it) => {
+      const valBruto = it.valor_unitario * it.quantidade;
+      let descVal = 0;
+      if (it.desconto_tipo === 'percentual' && it.desconto_valor) {
+        descVal = valBruto * (it.desconto_valor / 100);
+      } else if (it.desconto_tipo === 'valor_fixo' && it.desconto_valor) {
+        descVal = Math.min(valBruto, it.desconto_valor);
       }
-    }
-
-    if (itensParaInserir.length > 0) {
-      const { error: errItens } = await supabase.from('comanda_itens').insert(itensParaInserir);
-      if (errItens) {
-        console.error('Erro ao salvar itens da comanda:', errItens);
-      }
-    }
-  }
-
-  // 5. Insere pagamentos se existirem
-  if (payload.pagamentos && payload.pagamentos.length > 0) {
-    const pagamentosParaInserir = payload.pagamentos.map((pg) => {
-      let formaPg: 'dinheiro' | 'pix' | 'cartao_credito' | 'cartao_debito' = 'pix';
-      let detalheConta: string | undefined = undefined;
-
-      switch (pg.forma) {
-        case 'pix_bricia':
-          formaPg = 'pix';
-          detalheConta = 'PIX Bricia';
-          break;
-        case 'pix_flavia':
-          formaPg = 'pix';
-          detalheConta = 'PIX Flavia';
-          break;
-        case 'credito':
-          formaPg = 'cartao_credito';
-          break;
-        case 'debito':
-          formaPg = 'cartao_debito';
-          break;
-        case 'dinheiro':
-          formaPg = 'dinheiro';
-          break;
-        default:
-          formaPg = 'pix';
-      }
+      const valLiquido = Math.max(0, valBruto - descVal);
+      // Opção B: comissão calculada sobre o valor líquido
+      const valComissao = valLiquido * (it.comissao_percentual / 100);
 
       return {
         comanda_id: comandaId,
-        forma_pagamento: formaPg,
-        valor: pg.valor,
-        detalhe_conta: detalheConta,
+        servico_id: it.servico_id,
+        profissional_id: it.profissional_id,
+        preco_unitario: it.valor_unitario,
+        quantidade: it.quantidade,
+        comissao_percentual: it.comissao_percentual,
+        valor_comissao: valComissao,
+        desconto_tipo: it.desconto_tipo,
+        desconto_valor: it.desconto_valor,
+        desconto_origem: it.desconto_origem,
       };
     });
+
+    let { error: errItens } = await supabase.from('comanda_itens').insert(itensParaInserir);
+    if (errItens && (errItens.message?.includes('desconto_tipo') || errItens.code === '42703')) {
+      console.warn('Colunas de desconto ausentes na tabela comanda_itens no Supabase. Inserindo itens no formato legado (sem colunas de desconto)...');
+      const itensLegado = itensParaInserir.map(({ desconto_tipo, desconto_valor, desconto_origem, ...resto }) => resto);
+      const resRetry = await supabase.from('comanda_itens').insert(itensLegado);
+      errItens = resRetry.error;
+    }
+
+    if (errItens) {
+      console.error('Erro ao salvar itens da comanda:', errItens);
+    }
+  }
+
+  if (pagamentosResolvidos.length > 0) {
+    const pagamentosParaInserir = pagamentosResolvidos.map((pg) => ({
+      comanda_id: comandaId,
+      forma_pagamento: pg.forma_pagamento,
+      valor: pg.valor,
+      detalhe_conta: pg.detalhe_conta,
+    }));
 
     const { error: errPg } = await supabase.from('comanda_pagamentos').insert(pagamentosParaInserir);
     if (errPg) {
@@ -249,16 +311,24 @@ export async function finalizarComandaNoSupabase(
     }
   }
 
-  // 6. Atualiza o status do agendamento para 'concluido' no Supabase se houver vínculo
+  // Se algum item usou cupom de aniversário, marca a data de uso no cliente
+  const usouAniversario = itensResolvidos.some((i) => i.desconto_origem === 'aniversario');
+  if (usouAniversario && resolvedClienteId) {
+    try {
+      await supabase
+        .from('clientes')
+        .update({ cupom_aniversario_usado_em: new Date().toISOString() })
+        .eq('id', resolvedClienteId);
+    } catch (e) {
+      console.warn('Não foi possível gravar cupom_aniversario_usado_em (coluna pode não existir ainda):', e);
+    }
+  }
+
   if (resolvedAgendamentoId) {
-    const { error: errApt } = await supabase
+    await supabase
       .from('agendamentos')
       .update({ status: 'concluido' })
       .eq('id', resolvedAgendamentoId);
-
-    if (errApt) {
-      console.error('Erro ao atualizar agendamento para concluido:', errApt);
-    }
   }
 
   return { comandaId, comandaNumero };

@@ -10,12 +10,28 @@ export const FormaPagamentoEnum = z.enum([
 
 export type FormaPagamentoTipo = z.infer<typeof FormaPagamentoEnum>;
 
+export const DescontoTipoSchema = z.enum(['percentual', 'valor_fixo']);
+export type DescontoTipo = z.infer<typeof DescontoTipoSchema>;
+
+export const DescontoOrigemSchema = z.enum(['aniversario', 'manual']);
+export type DescontoOrigem = z.infer<typeof DescontoOrigemSchema>;
+
+export const DescontoItemSchema = z.object({
+  tipo: DescontoTipoSchema,
+  valor: z.number().min(0, 'Valor de desconto deve ser maior ou igual a zero'),
+  origem: DescontoOrigemSchema,
+});
+export type DescontoItem = z.infer<typeof DescontoItemSchema>;
+
 export const ComandaItemSchema = z.object({
   id: z.string(),
+  servicoId: z.string().optional(),
+  profissionalId: z.string().optional(),
   descricao: z.string(),
   profissional: z.string(),
   quantidade: z.number().min(1),
   valorUnitario: z.number().min(0),
+  desconto: DescontoItemSchema.optional().nullable(),
 });
 
 export type ComandaItem = z.infer<typeof ComandaItemSchema>;

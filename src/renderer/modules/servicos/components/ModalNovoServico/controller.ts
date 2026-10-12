@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useServicosStore } from '../../store/servicos.store';
+import { formatarNomeProprio } from '@shared/lib/formatters';
 
 export function useModalNovoServicoController() {
   const modalAberto = useServicosStore((s) => s.modalNovoAberto);
@@ -12,7 +13,8 @@ export function useModalNovoServicoController() {
   const salvarServico = useServicosStore((s) => s.salvarServico);
   const criarCategoria = useServicosStore((s) => s.criarCategoria);
 
-  const [nome, setNome] = useState('');
+  const [nome, setNomeState] = useState('');
+  const setNome = (valor: string) => setNomeState(formatarNomeProprio(valor));
   const [descricao, setDescricao] = useState('');
   
   // Estado do Combobox de Categoria

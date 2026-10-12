@@ -31,9 +31,10 @@ export const useAgendaStore = create<AgendaStore>((set, get) => ({
   carregarAgenda: async () => {
     set({ carregando: true, erro: null });
     try {
+      const dataSel = get().dataSelecionada;
       const [agendamentos, profissionais, horEex] = await Promise.all([
-        agendaService.buscarAgendamentosDoDia(get().dataSelecionada),
-        agendaService.buscarProfissionais(),
+        agendaService.buscarAgendamentosDoDia(dataSel),
+        agendaService.buscarProfissionais(dataSel),
         agendaService.buscarHorariosEExcecoesDosProfissionais(),
       ]);
       set({

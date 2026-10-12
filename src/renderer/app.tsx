@@ -8,6 +8,11 @@ import { CaixaView } from '@modules/caixa';
 import { ClientesView } from '@modules/clientes';
 import { ServicosView } from '@modules/servicos';
 import { ProfissionaisView } from '@modules/profissionais';
+import { UpdateBanner } from '@shared/ui/UpdateBanner';
+import { iniciarMonitoramentoAtualizacao } from '@shared/lib/update.store';
+
+// Assina os eventos de atualização OTA do Electron uma única vez (no-op no navegador).
+iniciarMonitoramentoAtualizacao();
 
 function App() {
   const currentRoute = useRouterStore((s) => s.currentRoute);
@@ -24,6 +29,8 @@ function App() {
         {currentRoute === '/servicos' && <ServicosView />}
         {currentRoute === '/profissionais' && <ProfissionaisView />}
       </div>
+
+      <UpdateBanner />
     </div>
   );
 }

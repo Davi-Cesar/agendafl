@@ -35,12 +35,37 @@ export async function buscarClientes(
     cpf: c.cpf || null,
     observacoes: c.observacoes || null,
     status: c.status || 'ativo',
+    cupomAniversarioUsadoEm: c.cupom_aniversario_usado_em || null,
     removidoEm: c.removido_em || null,
     createdAt: c.created_at,
     updatedAt: c.updated_at,
   }));
 
   return { clientes, total: count ?? clientes.length };
+}
+
+export async function buscarClientePorIdNoSupabase(id: string): Promise<Cliente | null> {
+  const { data, error } = await supabase
+    .from('clientes')
+    .select('*')
+    .eq('id', id)
+    .maybeSingle();
+
+  if (error || !data) return null;
+
+  return {
+    id: data.id,
+    nome: data.nome || '',
+    telefone: data.telefone || '',
+    dataNascimento: data.data_nascimento || null,
+    cpf: data.cpf || null,
+    observacoes: data.observacoes || null,
+    status: data.status || 'ativo',
+    cupomAniversarioUsadoEm: data.cupom_aniversario_usado_em || null,
+    removidoEm: data.removido_em || null,
+    createdAt: data.created_at,
+    updatedAt: data.updated_at,
+  };
 }
 
 export async function buscarAniversariantes(dataStr: string): Promise<Cliente[]> {
@@ -143,6 +168,7 @@ export async function salvarClienteNoSupabase(dados: Partial<Cliente>): Promise<
     cpf: data.cpf || null,
     observacoes: data.observacoes || null,
     status: data.status || 'ativo',
+    cupomAniversarioUsadoEm: data.cupom_aniversario_usado_em || null,
     removidoEm: data.removido_em || null,
     createdAt: data.created_at,
     updatedAt: data.updated_at,

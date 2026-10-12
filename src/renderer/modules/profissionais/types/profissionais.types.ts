@@ -5,6 +5,8 @@ export interface ServicoOption {
   nome: string;
   duracaoMinutos?: number;
   precoPadrao?: number;
+  categoriaId?: string | null;
+  categoriaNome?: string | null;
 }
 
 export interface ProfissionalDetalhado extends Profissional {

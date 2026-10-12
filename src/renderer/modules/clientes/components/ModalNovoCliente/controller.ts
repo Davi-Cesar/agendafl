@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useClientesStore } from '../../store/clientes.store';
 import { CriarClienteDTOSchema, type ClienteStatus } from '../../schemas/cliente.schema';
-import { formatarCelular, formatarCPF, apenasDigitos } from '@shared/lib/formatters';
+import { formatarCelular, formatarCPF, apenasDigitos, formatarNomeProprio } from '@shared/lib/formatters';
 
 export function useModalNovoClienteController() {
   const modalAberto = useClientesStore((s) => s.modalNovoAberto);
@@ -10,7 +10,8 @@ export function useModalNovoClienteController() {
   const fecharModais = useClientesStore((s) => s.fecharModais);
   const salvarCliente = useClientesStore((s) => s.salvarCliente);
 
-  const [nome, setNome] = useState('');
+  const [nome, setNomeState] = useState('');
+  const setNome = (valor: string) => setNomeState(formatarNomeProprio(valor));
   const [telefone, setTelefone] = useState('');
   const [dataNascimento, setDataNascimento] = useState('');
   const [cpf, setCpf] = useState('');

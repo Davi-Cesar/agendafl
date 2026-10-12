@@ -3,6 +3,7 @@ import { useProfissionaisViewController } from './controller';
 import { ModalNovoProfissional } from '../../components/ModalNovoProfissional';
 import { ModalServicosProfissional } from '../../components/ModalServicosProfissional';
 import { ModalAddExcecao } from '../../components/ModalAddExcecao';
+import { ModalExcluirProfissional } from '../../components/ModalExcluirProfissional';
 
 export function ProfissionaisView() {
   const controller = useProfissionaisViewController();
@@ -57,10 +58,45 @@ export function ProfissionaisView() {
       <div className="flex-1 flex overflow-hidden">
         {/* Coluna Esquerda: Lista de Profissionais Registrados */}
         <aside className="w-72 min-w-[280px] bg-[#110e06] border-r border-[#38342b] flex flex-col">
-          <div className="px-4 py-3 border-b border-[#38342b]">
-            <span className="font-mono text-[11px] text-[#99907b] font-medium tracking-wider uppercase">
-              REGISTRADOS ({controller.totalRegistrados})
-            </span>
+          <div className="p-3 border-b border-[#38342b]">
+            <div className="flex items-center w-full gap-1 bg-[#16130b] p-1 rounded-lg border border-[#38342b]">
+              <button
+                type="button"
+                onClick={() => controller.setFiltroStatus('ativo')}
+                className={`flex-1 py-1 rounded text-center text-xs font-mono cursor-pointer transition-colors ${
+                  controller.filtroStatus === 'ativo'
+                    ? 'bg-[#e9c340] text-[#110e06] font-bold shadow-sm'
+                    : 'text-[#99907b] hover:text-[#eae2d3]'
+                }`}
+                title="Mostrar apenas ativos"
+              >
+                Ativos
+              </button>
+              <button
+                type="button"
+                onClick={() => controller.setFiltroStatus('inativo')}
+                className={`flex-1 py-1 rounded text-center text-xs font-mono cursor-pointer transition-colors ${
+                  controller.filtroStatus === 'inativo'
+                    ? 'bg-[#e9c340] text-[#110e06] font-bold shadow-sm'
+                    : 'text-[#99907b] hover:text-[#eae2d3]'
+                }`}
+                title="Mostrar inativos"
+              >
+                Inativos
+              </button>
+              <button
+                type="button"
+                onClick={() => controller.setFiltroStatus('todos')}
+                className={`flex-1 py-1 rounded text-center text-xs font-mono cursor-pointer transition-colors ${
+                  controller.filtroStatus === 'todos'
+                    ? 'bg-[#e9c340] text-[#110e06] font-bold shadow-sm'
+                    : 'text-[#99907b] hover:text-[#eae2d3]'
+                }`}
+                title="Mostrar todos"
+              >
+                Todos
+              </button>
+            </div>
           </div>
 
           <div className="flex-1 overflow-y-auto divide-y divide-[#38342b]/40">
@@ -208,7 +244,7 @@ export function ProfissionaisView() {
 
                   <button
                     type="button"
-                    onClick={() => controller.excluirProfissional(controller.profissionalAtual!.id)}
+                    onClick={() => controller.handleAbrirModalExcluir(controller.profissionalAtual)}
                     className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-xs font-semibold bg-[#93000a]/20 hover:bg-[#93000a]/40 border border-[#ffb4ab]/30 text-[#ffb4ab] transition-colors cursor-pointer shadow-sm"
                   >
                     <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -562,6 +598,7 @@ export function ProfissionaisView() {
       <ModalNovoProfissional />
       <ModalServicosProfissional />
       <ModalAddExcecao />
+      <ModalExcluirProfissional />
     </div>
   );
 }

@@ -156,7 +156,5 @@ export const useCaixaStore = create<CaixaStore>((set, get) => ({
 // Reatividade em Tempo Real: Atualiza dados do caixa quando uma comanda for finalizada
 eventBus.on('comanda:finalizada', () => {
   const store = useCaixaStore.getState();
-  if (store.caixaAtivo) {
-    store.carregarCaixa();
-  }
+  store.carregarCaixa();
 });

@@ -6,6 +6,7 @@ export async function buscarProfissionais(): Promise<Profissional[]> {
   const { data, error } = await supabase
     .from('profissionais')
     .select('*')
+    .or('especialidade.neq.__removido__,especialidade.is.null')
     .order('nome', { ascending: true });
 
   if (error) {
@@ -31,8 +32,9 @@ export async function buscarProfissionais(): Promise<Profissional[]> {
 export async function buscarServicosDoProfissional(profissionalId: string): Promise<ServicoOption[]> {
   const { data, error } = await supabase
     .from('profissionais_servicos')
-    .select('servico_id, servicos(id, nome, duracao, preco_padrao)')
-    .eq('profissional_id', profissionalId);
+    .select('servico_id, servicos!inner(id, nome, duracao_minutos, preco_padrao, ativo, categoria_id, categorias_servicos(id, nome))')
+    .eq('profissional_id', profissionalId)
+    .eq('servicos.ativo', true);
 
   if (error) {
     console.error('Erro ao buscar serviços do profissional:', error);
@@ -42,8 +44,10 @@ export async function buscarServicosDoProfissional(profissionalId: string): Prom
   return (data || []).map((item: any) => ({
     id: item.servicos?.id || item.servico_id,
     nome: item.servicos?.nome || 'Serviço',
-    duracaoMinutos: item.servicos?.duracao,
+    duracaoMinutos: item.servicos?.duracao_minutos,
     precoPadrao: item.servicos?.preco_padrao != null ? Number(item.servicos.preco_padrao) : undefined,
+    categoriaId: item.servicos?.categoria_id || null,
+    categoriaNome: item.servicos?.categorias_servicos?.nome || null,
   }));
 }
 
@@ -190,14 +194,27 @@ export async function alterarStatusProfissional(id: string, novoStatus: 'ativo' 
 }
 
 export async function excluirProfissionalNoSupabase(id: string): Promise<void> {
-  const { error } = await supabase
+  // 1. Tenta exclusão física direta (caso seja profissional recente sem histórico de vendas)
+  const { error: deleteError } = await supabase
     .from('profissionais')
     .delete()
     .eq('id', id);
 
-  if (error) {
-    console.error('Erro ao excluir profissional:', error);
-    await alterarStatusProfissional(id, 'inativo');
+  if (!deleteError) {
+    return;
+  }
+
+  // 2. Se o banco rejeitar a exclusão física por integridade referencial (FK com comanda_itens/agendamentos),
+  // aplica SOFT DELETE (status = 'inativo' e especialidade = '__removido__') para que os dados de
+  // histórico, atendimento e comanda permaneçam íntegros no banco, mas o profissional seja removido da equipe.
+  const { error: updateError } = await supabase
+    .from('profissionais')
+    .update({ status: 'inativo', especialidade: '__removido__' })
+    .eq('id', id);
+
+  if (updateError) {
+    console.error('Erro ao inativar profissional no Supabase:', updateError);
+    throw new Error(`Erro ao remover profissional: ${updateError.message}`);
   }
 }
 
@@ -269,7 +286,8 @@ export async function salvarServicosDoProfissional(
 export async function buscarTodosServicos(): Promise<ServicoOption[]> {
   const { data, error } = await supabase
     .from('servicos')
-    .select('id, nome, duracao, preco_padrao')
+    .select('id, nome, duracao_minutos, preco_padrao, categoria_id, categorias_servicos(id, nome)')
+    .eq('ativo', true)
     .order('nome', { ascending: true });
 
   if (error) {
@@ -280,8 +298,27 @@ export async function buscarTodosServicos(): Promise<ServicoOption[]> {
   return (data || []).map((s: any) => ({
     id: s.id,
     nome: s.nome,
-    duracaoMinutos: s.duracao,
+    duracaoMinutos: s.duracao_minutos,
     precoPadrao: s.preco_padrao != null ? Number(s.preco_padrao) : undefined,
+    categoriaId: s.categoria_id || null,
+    categoriaNome: s.categorias_servicos?.nome || null,
+  }));
+}
+
+export async function buscarCategoriasServicos(): Promise<{ id: string; nome: string }[]> {
+  const { data, error } = await supabase
+    .from('categorias_servicos')
+    .select('id, nome')
+    .order('nome', { ascending: true });
+
+  if (error) {
+    console.error('Erro ao buscar categorias de serviços:', error);
+    return [];
+  }
+
+  return (data || []).map((c: any) => ({
+    id: c.id,
+    nome: c.nome || '',
   }));
 }
 

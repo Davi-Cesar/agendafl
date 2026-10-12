@@ -106,7 +106,21 @@ export async function buscarDadosDoCaixa(
   totais: TotaisMeiosPagamento;
   totaisPix: CaixaTotalPix[];
 }> {
-  // Busca estritamente comandas finalizadas vinculadas a ESTE caixa_id
+  // 1. Auto-associa comandas finalizadas recentes sem caixa_id (criadas hoje)
+  try {
+    const hoje = new Date();
+    hoje.setHours(0, 0, 0, 0);
+    await supabase
+      .from('comandas')
+      .update({ caixa_id: caixaId })
+      .is('caixa_id', null)
+      .eq('status', 'finalizada')
+      .gte('finalizada_em', hoje.toISOString());
+  } catch (errAuto) {
+    console.warn('Tentativa de associar comandas órfãs ao caixa:', errAuto);
+  }
+
+  // 2. Busca comandas finalizadas vinculadas a ESTE caixa_id
   const { data: comandas, error: errComandas } = await supabase
     .from('comandas')
     .select(`
@@ -118,7 +132,8 @@ export async function buscarDadosDoCaixa(
       clientes (nome),
       agendamentos (
         horario_inicio,
-        servicos (nome)
+        servicos (nome),
+        profissionais (id, nome)
       ),
       comanda_itens (
         id,
@@ -163,6 +178,7 @@ export async function buscarDadosDoCaixa(
     const apt = Array.isArray(c.agendamentos) ? c.agendamentos[0] : c.agendamentos;
     const primeiroItem = Array.isArray(c.comanda_itens) && c.comanda_itens.length > 0 ? c.comanda_itens[0] : null;
     const servicoNome = apt?.servicos?.nome || primeiroItem?.servicos?.nome || 'Atendimento';
+    const profNomePadrao = primeiroItem?.profissionais?.nome || apt?.profissionais?.nome || 'Profissional';
 
     const rawHorario = c.finalizada_em || c.created_at || new Date().toISOString();
     const dataObj = new Date(rawHorario);
@@ -214,9 +230,24 @@ export async function buscarDadosDoCaixa(
         servicoNome,
         metodo: metodoStr,
         valor: val,
-        profissionalNome: primeiroItem?.profissionais?.nome,
+        profissionalNome: profNomePadrao,
       });
     });
+
+    // Fallback caso comanda_pagamentos esteja vazio mas a comanda possua valor_total
+    if (pagamentos.length === 0 && Number(c.valor_total || 0) > 0) {
+      const val = Number(c.valor_total);
+      dinheiroTotal += val;
+      transacoes.push({
+        id: `comanda-${c.id}`,
+        horario: horarioFormatado,
+        clienteNome,
+        servicoNome,
+        metodo: 'DINHEIRO',
+        valor: val,
+        profissionalNome: profNomePadrao,
+      });
+    }
 
     // Processa comissões
     const itens = Array.isArray(c.comanda_itens) ? c.comanda_itens : [];
@@ -227,13 +258,26 @@ export async function buscarDadosDoCaixa(
       const qtd = Number(it.quantidade || 1);
 
       const valUnit = Number(it.preco_unitario || 0);
-      const comissaoCalc = it.valor_comissao != null ? Number(it.valor_comissao) : valUnit * qtd * 0.5;
+      const comissaoCalc = it.valor_comissao != null ? Number(it.valor_comissao) : valUnit * qtd * 0.6; // 60% fixo
 
       const exist = mapComissoes.get(profId) || { nome: profNome, quantidade: 0, total: 0 };
       exist.quantidade += qtd;
       exist.total += comissaoCalc;
       mapComissoes.set(profId, exist);
     });
+
+    // Fallback caso comanda_itens esteja vazio mas a comanda tenha agendamento com profissional
+    if (itens.length === 0 && Number(c.valor_total || 0) > 0 && (apt?.profissionais?.id || apt?.profissionais?.nome)) {
+      const profId = apt.profissionais.id || apt.profissionais.nome;
+      const profNome = apt.profissionais.nome || 'Profissional';
+      const val = Number(c.valor_total);
+      const comissaoCalc = val * 0.6; // 60% por regra de negócio
+
+      const exist = mapComissoes.get(profId) || { nome: profNome, quantidade: 0, total: 0 };
+      exist.quantidade += 1;
+      exist.total += comissaoCalc;
+      mapComissoes.set(profId, exist);
+    }
   });
 
   const comissoes: ComissaoProfissional[] = Array.from(mapComissoes.entries()).map(([profId, item]) => ({
@@ -319,7 +363,8 @@ export async function buscarDetalhesCaixaFechado(
         clientes (nome),
         agendamentos (
           horario_inicio,
-          servicos (nome)
+          servicos (nome),
+          profissionais (id, nome)
         ),
         comanda_itens (
           id,
@@ -389,6 +434,7 @@ export async function buscarDetalhesCaixaFechado(
     const apt = Array.isArray(c.agendamentos) ? c.agendamentos[0] : c.agendamentos;
     const primeiroItem = Array.isArray(c.comanda_itens) && c.comanda_itens.length > 0 ? c.comanda_itens[0] : null;
     const servicoNome = apt?.servicos?.nome || primeiroItem?.servicos?.nome || 'Atendimento';
+    const profNomePadrao = primeiroItem?.profissionais?.nome || apt?.profissionais?.nome || 'Profissional';
 
     const rawHorario = c.finalizada_em || c.created_at || new Date().toISOString();
     const dataObj = new Date(rawHorario);
@@ -417,9 +463,21 @@ export async function buscarDetalhesCaixaFechado(
         servicoNome,
         metodo: metodoStr,
         valor: val,
-        profissionalNome: primeiroItem?.profissionais?.nome,
+        profissionalNome: profNomePadrao,
       });
     });
+
+    if (pagamentos.length === 0 && Number(c.valor_total || 0) > 0) {
+      transacoes.push({
+        id: `comanda-${c.id}`,
+        horario: horarioFormatado,
+        clienteNome,
+        servicoNome,
+        metodo: 'DINHEIRO',
+        valor: Number(c.valor_total),
+        profissionalNome: profNomePadrao,
+      });
+    }
   });
 
   const comissoes: ComissaoProfissional[] = (comissoesData || []).map((c: any) => ({

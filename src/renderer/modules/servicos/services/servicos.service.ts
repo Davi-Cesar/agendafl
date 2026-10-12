@@ -29,7 +29,9 @@ export async function buscarServicos(
           nome
         )
       )
-    `, { count: 'exact' });
+    `, { count: 'exact' })
+    // Serviços "excluídos" são apenas desativados (soft delete): não devem aparecer na lista nem na contagem.
+    .eq('ativo', true);
 
   if (busca.trim()) {
     const term = `%${busca.trim()}%`;

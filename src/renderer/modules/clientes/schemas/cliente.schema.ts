@@ -11,6 +11,7 @@ export const ClienteSchema = z.object({
   cpf: z.string().optional().nullable(),
   observacoes: z.string().optional().nullable(),
   status: ClienteStatusSchema.default('ativo'),
+  cupomAniversarioUsadoEm: z.string().optional().nullable(),
   removidoEm: z.string().optional().nullable(),
   anonimizadoEm: z.string().optional().nullable(),
   createdAt: z.string().optional(),

@@ -84,3 +84,30 @@ export function formatarDataISO(dataBR?: string | null): string | null {
 
   return null;
 }
+
+/** Ligações do português que permanecem em minúsculo no meio de um nome (ex.: "Pé e Mão", "Maria da Silva"). */
+const LIGACOES_MINUSCULAS = new Set(['e', 'de', 'da', 'do', 'das', 'dos']);
+
+/**
+ * Coloca a primeira letra de cada palavra em maiúscula e as demais em minúscula
+ * (ex.: "pé e mão" -> "Pé e Mão", "JOÃO DA SILVA" -> "João da Silva").
+ * Preserva os espaços digitados, inclusive o espaço final, para não atrapalhar a digitação.
+ */
+export function formatarNomeProprio(val?: string | null): string {
+  if (!val) return '';
+
+  let indicePalavra = 0;
+  return val
+    .toLowerCase()
+    .split(/(\s+)/)
+    .map((trecho) => {
+      if (trecho === '' || /^\s+$/.test(trecho)) return trecho;
+
+      const ehPrimeira = indicePalavra === 0;
+      indicePalavra += 1;
+
+      if (!ehPrimeira && LIGACOES_MINUSCULAS.has(trecho)) return trecho;
+      return trecho.charAt(0).toUpperCase() + trecho.slice(1);
+    })
+    .join('');
+}

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useProfissionaisStore } from '../../store/profissionais.store';
 import { CriarProfissionalDTOSchema, type Profissional } from '../../schemas/profissional.schema';
+import { formatarNomeProprio } from '@shared/lib/formatters';
 
 export function useModalNovoProfissionalController() {
   const modalAberto = useProfissionaisStore((s) => s.modalNovoAberto);
@@ -8,8 +9,14 @@ export function useModalNovoProfissionalController() {
   const setModalNovoAberto = useProfissionaisStore((s) => s.setModalNovoAberto);
   const salvarProfissional = useProfissionaisStore((s) => s.salvarProfissional);
 
-  const [nome, setNome] = useState('');
-  const [especialidade, setEspecialidade] = useState('');
+  const todosServicos = useProfissionaisStore((s) => s.todosServicos);
+  const categorias = useProfissionaisStore((s) => s.categorias);
+  const servicosDoProfissional = useProfissionaisStore((s) => s.servicosDoProfissional);
+
+  const [nome, setNomeState] = useState('');
+  const setNome = (valor: string) => setNomeState(formatarNomeProprio(valor));
+  const [especialidade, setEspecialidadeState] = useState('');
+  const setEspecialidade = (valor: string) => setEspecialidadeState(formatarNomeProprio(valor));
   const [email, setEmail] = useState('');
   const [telefone, setTelefone] = useState('');
   const [cpf, setCpf] = useState('');
@@ -18,24 +25,109 @@ export function useModalNovoProfissionalController() {
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
 
+  // Mapa de serviços selecionados { [servicoId]: boolean }
+  const [selecionadosMap, setSelecionadosMap] = useState<Record<string, boolean>>({});
+  const [mostrarDetalhesServicos, setMostrarDetalhesServicos] = useState(false);
+
   useEffect(() => {
     if (profissionalParaEditar) {
-      setNome(profissionalParaEditar.nome || '');
-      setEspecialidade(profissionalParaEditar.especialidade || '');
+      setNomeState(profissionalParaEditar.nome || '');
+      setEspecialidadeState(profissionalParaEditar.especialidade || '');
       setEmail(profissionalParaEditar.email || '');
       setTelefone(profissionalParaEditar.telefone || '');
       setCpf(profissionalParaEditar.cpf || '');
       setStatus(profissionalParaEditar.status || 'ativo');
+
+      const map: Record<string, boolean> = {};
+      servicosDoProfissional.forEach((s) => {
+        map[s.id] = true;
+      });
+      setSelecionadosMap(map);
     } else {
-      setNome('');
-      setEspecialidade('');
+      setNomeState('');
+      setEspecialidadeState('');
       setEmail('');
       setTelefone('');
       setCpf('');
       setStatus('ativo');
+      setSelecionadosMap({});
     }
+    setMostrarDetalhesServicos(false);
     setErro(null);
-  }, [profissionalParaEditar, modalAberto]);
+  }, [profissionalParaEditar, modalAberto, servicosDoProfissional]);
+
+  // Estrutura agregada de categorias com seus respectivos serviços
+  const categoriasComServicos = categorias.map((cat) => {
+    const servicosDaCat = todosServicos.filter((s) => s.categoriaId === cat.id);
+    const totalServicos = servicosDaCat.length;
+    const totalSelecionados = servicosDaCat.filter((s) => selecionadosMap[s.id]).length;
+    const isTodas = totalServicos > 0 && totalSelecionados === totalServicos;
+    const isParcial = totalSelecionados > 0 && totalSelecionados < totalServicos;
+
+    return {
+      id: cat.id,
+      nome: cat.nome,
+      servicos: servicosDaCat,
+      totalServicos,
+      totalSelecionados,
+      isTodas,
+      isParcial,
+    };
+  });
+
+  // Serviços sem categoria associada
+  const servicosSemCategoria = todosServicos.filter(
+    (s) => !s.categoriaId || !categorias.some((c) => c.id === s.categoriaId)
+  );
+
+  const totalServicosSelecionados = Object.values(selecionadosMap).filter(Boolean).length;
+
+  /**
+   * Clicar em uma categoria: se todos estiverem marcados, desmarca todos da categoria.
+   * Caso contrário (nenhum ou parcial), marca AUTOMATICAMENTE todos os serviços daquela categoria!
+   */
+  const toggleCategoria = (categoriaId: string) => {
+    const servicosDaCat = todosServicos.filter((s) => s.categoriaId === categoriaId);
+    if (servicosDaCat.length === 0) return;
+
+    const todosJaMarcados = servicosDaCat.every((s) => selecionadosMap[s.id]);
+
+    setSelecionadosMap((prev) => {
+      const next = { ...prev };
+      servicosDaCat.forEach((s) => {
+        next[s.id] = !todosJaMarcados;
+      });
+      return next;
+    });
+  };
+
+  /**
+   * Alterna um serviço individual específico
+   */
+  const toggleServico = (servicoId: string) => {
+    setSelecionadosMap((prev) => ({
+      ...prev,
+      [servicoId]: !prev[servicoId],
+    }));
+  };
+
+  /**
+   * Seleciona todos os serviços de todas as categorias
+   */
+  const selecionarTodos = () => {
+    const next: Record<string, boolean> = {};
+    todosServicos.forEach((s) => {
+      next[s.id] = true;
+    });
+    setSelecionadosMap(next);
+  };
+
+  /**
+   * Limpa todas as seleções de serviços
+   */
+  const limparSelecao = () => {
+    setSelecionadosMap({});
+  };
 
   const handleFechar = () => {
     setModalNovoAberto(false);
@@ -68,7 +160,9 @@ export function useModalNovoProfissionalController() {
         ...parseResult.data,
       };
 
-      await salvarProfissional(dados);
+      const servicoIds = Object.keys(selecionadosMap).filter((id) => selecionadosMap[id]);
+
+      await salvarProfissional(dados, servicoIds);
       setSalvando(false);
       handleFechar();
     } catch (err: any) {
@@ -96,6 +190,17 @@ export function useModalNovoProfissionalController() {
     setStatus,
     salvando,
     erro,
+    categoriasComServicos,
+    servicosSemCategoria,
+    selecionadosMap,
+    totalServicosSelecionados,
+    totalTodosServicos: todosServicos.length,
+    mostrarDetalhesServicos,
+    setMostrarDetalhesServicos,
+    toggleCategoria,
+    toggleServico,
+    selecionarTodos,
+    limparSelecao,
     handleFechar,
     handleSalvar,
   };
