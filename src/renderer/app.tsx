@@ -8,6 +8,7 @@ import { CaixaView } from '@modules/caixa';
 import { ClientesView } from '@modules/clientes';
 import { ServicosView } from '@modules/servicos';
 import { ProfissionaisView } from '@modules/profissionais';
+import { TitleBar } from '@shared/ui/TitleBar';
 import { UpdateBanner } from '@shared/ui/UpdateBanner';
 import { iniciarMonitoramentoAtualizacao } from '@shared/lib/update.store';
 
@@ -18,16 +19,21 @@ function App() {
   const currentRoute = useRouterStore((s) => s.currentRoute);
 
   return (
-    <div id="app" style={{ display: 'flex', width: '100vw', height: '100vh', overflow: 'hidden' }}>
-      <Sidebar />
+    <div id="app" className="flex flex-col w-screen h-screen overflow-hidden bg-[#0d0b06]">
+      {/* Barra de Título Customizada para Windows (arrastar, minimizar, maximizar, fechar) */}
+      <TitleBar />
 
-      <div style={{ flex: 1, height: '100%', overflowY: 'auto', background: 'var(--surface-base, #0f172a)' }}>
-        {currentRoute === '/agenda' && <AgendaView />}
-        {currentRoute === '/comandas' && <ComandasView />}
-        {currentRoute === '/caixa' && <CaixaView />}
-        {currentRoute === '/clientes' && <ClientesView />}
-        {currentRoute === '/servicos' && <ServicosView />}
-        {currentRoute === '/profissionais' && <ProfissionaisView />}
+      <div className="flex flex-1 w-full h-[calc(100vh-32px)] overflow-hidden">
+        <Sidebar />
+
+        <div className="flex-1 h-full overflow-y-auto bg-[#16130b]">
+          {currentRoute === '/agenda' && <AgendaView />}
+          {currentRoute === '/comandas' && <ComandasView />}
+          {currentRoute === '/caixa' && <CaixaView />}
+          {currentRoute === '/clientes' && <ClientesView />}
+          {currentRoute === '/servicos' && <ServicosView />}
+          {currentRoute === '/profissionais' && <ProfissionaisView />}
+        </div>
       </div>
 
       <UpdateBanner />

@@ -111,3 +111,15 @@ export function formatarNomeProprio(val?: string | null): string {
     })
     .join('');
 }
+
+/**
+ * Retorna a data atual no fuso local do usuário no formato ISO 'YYYY-MM-DD'.
+ * Evita o bug de conversão UTC onde horários noturnos (após 21h em UTC-3) pulam para o dia seguinte.
+ */
+export function getDataHojeLocal(): string {
+  const d = new Date();
+  const ano = d.getFullYear();
+  const mes = String(d.getMonth() + 1).padStart(2, '0');
+  const dia = String(d.getDate()).padStart(2, '0');
+  return `${ano}-${mes}-${dia}`;
+}

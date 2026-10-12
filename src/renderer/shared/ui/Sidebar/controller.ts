@@ -10,7 +10,9 @@ export function useSidebarController() {
   }, [navigate]);
 
   const handleLogout = useCallback(() => {
-    console.log('[Sidebar] Logout efetuado');
+    if (window.electronAPI?.closeWindow) {
+      window.electronAPI.closeWindow();
+    }
   }, []);
 
   return {

@@ -1,6 +1,17 @@
 /** Formatadores de data e moeda */
 export function formatDate(date: Date | string, pattern?: string): string {
-  const d = typeof date === 'string' ? new Date(date) : date;
+  if (!date) return '';
+  let d: Date;
+  if (typeof date === 'string') {
+    const partes = date.split('T')[0].split('-');
+    if (partes.length === 3) {
+      d = new Date(Number(partes[0]), Number(partes[1]) - 1, Number(partes[2]));
+    } else {
+      d = new Date(date);
+    }
+  } else {
+    d = date;
+  }
   if (isNaN(d.getTime())) return '';
   return d.toLocaleDateString('pt-BR', {
     weekday: 'long',

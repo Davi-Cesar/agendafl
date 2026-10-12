@@ -3,13 +3,14 @@ import * as agendaService from '../services/agenda.service';
 import type { AgendaStore } from '../types/agenda.types';
 import type { Agendamento, CriarAgendamentoInput } from '../schemas/agendamento.schema';
 import { eventBus } from '@shared/lib/events';
+import { getDataHojeLocal } from '@shared/lib/formatters';
 
 export const useAgendaStore = create<AgendaStore>((set, get) => ({
   agendamentos: [],
   profissionais: [],
   horariosMap: {},
   excecoesMap: {},
-  dataSelecionada: new Date().toISOString().split('T')[0],
+  dataSelecionada: getDataHojeLocal(),
   filtroProfissional: '',
   carregando: false,
   erro: null,
