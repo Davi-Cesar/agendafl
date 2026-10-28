@@ -1,5 +1,5 @@
 import { supabase } from '@shared/supabase/client';
-import type { Cliente } from '../schemas/cliente.schema';
+import type { Cliente, HistoricoClienteItem } from '../schemas/cliente.schema';
 import { formatarCelular, formatarCPF, formatarDataBR, apenasDigitos } from '@shared/lib/formatters';
 
 export async function buscarClientes(
@@ -243,4 +243,182 @@ export function exportarClientesCSV(clientes: Cliente[], nomeArquivo: string = '
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);
+}
+
+function extrairDataHoraISO(isoStr?: string | null): { data: string; horario: string } {
+  if (!isoStr) {
+    const agora = new Date();
+    const yyyy = agora.getFullYear();
+    const mm = String(agora.getMonth() + 1).padStart(2, '0');
+    const dd = String(agora.getDate()).padStart(2, '0');
+    return { data: `${yyyy}-${mm}-${dd}`, horario: '12:00' };
+  }
+  const d = new Date(isoStr);
+  if (isNaN(d.getTime())) {
+    return { data: isoStr.slice(0, 10), horario: '12:00' };
+  }
+  const yyyy = d.getFullYear();
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  const dd = String(d.getDate()).padStart(2, '0');
+  const horario = d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+  return { data: `${yyyy}-${mm}-${dd}`, horario };
+}
+
+export async function buscarHistoricoAtendimentos(clienteId?: string): Promise<HistoricoClienteItem[]> {
+  let queryComandas = supabase
+    .from('comandas')
+    .select(`
+      id,
+      cliente_id,
+      agendamento_id,
+      numero_sequencial,
+      status,
+      valor_total,
+      created_at,
+      finalizada_em,
+      clientes (id, nome),
+      agendamentos (
+        id,
+        data,
+        horario_inicio,
+        profissionais (nome),
+        servicos (nome)
+      ),
+      comanda_itens (
+        id,
+        preco_unitario,
+        quantidade,
+        profissionais (nome),
+        servicos (nome)
+      )
+    `)
+    .eq('status', 'finalizada')
+    .order('created_at', { ascending: false });
+
+  let queryAgendamentos = supabase
+    .from('agendamentos')
+    .select(`
+      id,
+      cliente_id,
+      data,
+      horario_inicio,
+      status,
+      clientes (id, nome),
+      profissionais (nome),
+      servicos (nome, preco_padrao)
+    `)
+    .in('status', ['concluido', 'em_atendimento', 'agendado'])
+    .order('data', { ascending: false });
+
+  if (clienteId) {
+    queryComandas = queryComandas.eq('cliente_id', clienteId);
+    queryAgendamentos = queryAgendamentos.eq('cliente_id', clienteId);
+  }
+
+  const [{ data: comandasData, error: errCmd }, { data: agendamentosData, error: errApt }] =
+    await Promise.all([queryComandas, queryAgendamentos]);
+
+  if (errCmd) {
+    console.error('Erro ao buscar histórico de comandas:', errCmd);
+  }
+  if (errApt) {
+    console.error('Erro ao buscar histórico de agendamentos:', errApt);
+  }
+
+  const agendamentosComComanda = new Set<string>();
+  const resultado: HistoricoClienteItem[] = [];
+
+  (comandasData || []).forEach((c: any) => {
+    const apt = Array.isArray(c.agendamentos) ? c.agendamentos[0] : c.agendamentos;
+    const agendamentoId = c.agendamento_id || apt?.id;
+    if (agendamentoId) {
+      agendamentosComComanda.add(agendamentoId);
+    }
+
+    const fallbackDt = extrairDataHoraISO(c.finalizada_em || c.created_at);
+    const dataAtendimento = apt?.data || fallbackDt.data;
+    const horarioAtendimento = apt?.horario_inicio ? apt.horario_inicio.slice(0, 5) : fallbackDt.horario;
+
+    const clienteNome = c.clientes?.nome || 'Cliente';
+    const comandaNumero = `#${String(c.numero_sequencial || 1).padStart(4, '0')}`;
+    const itens = Array.isArray(c.comanda_itens) ? c.comanda_itens : [];
+
+    if (itens.length > 0) {
+      itens.forEach((it: any, idx: number) => {
+        const servicoNome = it.servicos?.nome || apt?.servicos?.nome || 'Atendimento';
+        const profissionalNome = it.profissionais?.nome || apt?.profissionais?.nome || 'Profissional';
+        const valorItem = Number(it.preco_unitario || 0) * Number(it.quantidade || 1);
+
+        resultado.push({
+          id: `cmd-item-${it.id || `${c.id}-${idx}`}`,
+          clienteId: c.cliente_id || '',
+          clienteNome,
+          servicoNome,
+          profissionalNome,
+          data: dataAtendimento,
+          horario: horarioAtendimento,
+          valor: valorItem,
+          comandaNumero,
+          status: 'concluido',
+        });
+      });
+    } else {
+      resultado.push({
+        id: `cmd-${c.id}`,
+        clienteId: c.cliente_id || '',
+        clienteNome,
+        servicoNome: apt?.servicos?.nome || 'Atendimento',
+        profissionalNome: apt?.profissionais?.nome || 'Profissional',
+        data: dataAtendimento,
+        horario: horarioAtendimento,
+        valor: Number(c.valor_total || 0),
+        comandaNumero,
+        status: 'concluido',
+      });
+    }
+  });
+
+  (agendamentosData || []).forEach((a: any) => {
+    if (agendamentosComComanda.has(a.id)) return;
+
+    const statusNorm: 'concluido' | 'em_atendimento' | 'agendado' =
+      a.status === 'em_atendimento'
+        ? 'em_atendimento'
+        : a.status === 'agendado'
+        ? 'agendado'
+        : 'concluido';
+
+    resultado.push({
+      id: `apt-${a.id}`,
+      clienteId: a.cliente_id || '',
+      clienteNome: a.clientes?.nome || 'Cliente',
+      servicoNome: a.servicos?.nome || 'Serviço',
+      profissionalNome: a.profissionais?.nome || 'Profissional',
+      data: a.data || extrairDataHoraISO(null).data,
+      horario: a.horario_inicio ? a.horario_inicio.slice(0, 5) : '08:00',
+      valor: Number(a.servicos?.preco_padrao || 0),
+      comandaNumero: undefined,
+      status: statusNorm,
+    });
+  });
+
+  resultado.sort((a, b) => {
+    const cmpData = b.data.localeCompare(a.data);
+    if (cmpData !== 0) return cmpData;
+    return (b.horario || '').localeCompare(a.horario || '');
+  });
+
+  return resultado;
+}
+
+export async function buscarNomesProfissionais(): Promise<string[]> {
+  const { data, error } = await supabase
+    .from('profissionais')
+    .select('nome')
+    .eq('status', 'ativo')
+    .or('especialidade.neq.__removido__,especialidade.is.null')
+    .order('nome', { ascending: true });
+
+  if (error || !data) return [];
+  return data.map((p: any) => p.nome).filter(Boolean);
 }

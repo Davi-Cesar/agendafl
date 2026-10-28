@@ -25,6 +25,7 @@ export function useClientesViewController() {
 
   const abrirModalNovo = useClientesStore((s) => s.abrirModalNovo);
   const abrirPerfilCliente = useClientesStore((s) => s.abrirPerfilCliente);
+  const abrirModalRelatorio = useClientesStore((s) => s.abrirModalRelatorio);
 
   const [filtroStatusAberto, setFiltroStatusAberto] = useState(false);
   const [dataLocalAniv, setDataLocalAniv] = useState(dataAniversariantes);
@@ -90,5 +91,6 @@ export function useClientesViewController() {
     getInitials,
     abrirModalNovo,
     abrirPerfilCliente,
+    abrirModalRelatorio,
   };
 }

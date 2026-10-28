@@ -3,8 +3,10 @@ import { useClientesViewController } from './controller';
 import { ModalNovoCliente } from '../../components/ModalNovoCliente';
 import { ModalPerfilCliente } from '../../components/ModalPerfilCliente';
 import { ModalExcluirCliente } from '../../components/ModalExcluirCliente';
+import { ModalRelatorioClientes } from '../../components/ModalRelatorioClientes';
 import { formatarCelular, formatarDataBR } from '@shared/lib/formatters';
 import { Pagination } from '@shared/ui/Pagination';
+import { DatePicker } from '@shared/ui/DatePicker';
 
 export function ClientesView() {
   const controller = useClientesViewController();
@@ -59,9 +61,9 @@ export function ClientesView() {
       <main className="flex-1 p-6 overflow-y-auto bg-[#110e06] flex flex-col items-center">
         <div className="w-full max-w-6xl space-y-6">
           {/* Container Card Principal */}
-          <div className="bg-[#1f1b13] border border-[#38342b] rounded-xl shadow-xl overflow-hidden">
+          <div className="bg-[#1f1b13] border border-[#38342b] rounded-xl shadow-xl min-h-[420px] flex flex-col">
             {/* Header da Card: Abas + Controles da Direita */}
-            <div className="p-4 sm:p-5 border-b border-[#38342b] flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div className="p-4 sm:p-5 border-b border-[#38342b] flex flex-col md:flex-row md:items-center justify-between gap-4 relative z-20 rounded-t-xl">
               {/* Abas Alternáveis */}
               <div className="flex items-center gap-3">
                 <button
@@ -113,11 +115,12 @@ export function ClientesView() {
               <div className="flex items-center gap-2">
                 {!isTodos && (
                   <div className="flex items-center gap-2">
-                    <input
-                      type="date"
+                    <DatePicker
                       value={controller.dataLocalAniv}
-                      onChange={(e) => controller.setDataLocalAniv(e.target.value)}
-                      className="bg-[#110e06] border border-[#38342b] rounded-lg px-3 py-1.5 text-xs font-mono text-[#eae2d3] outline-none focus:border-[#e9c340]"
+                      onChange={(val) => controller.setDataLocalAniv(val)}
+                      size="sm"
+                      align="right"
+                      className="w-36"
                     />
                     <button
                       type="button"
@@ -148,21 +151,24 @@ export function ClientesView() {
 
                 <button
                   type="button"
-                  onClick={controller.handleExportarCSV}
-                  title="Exportar clientes em CSV"
-                  className="p-2 rounded-lg bg-[#110e06] border border-[#38342b] hover:border-[#e9c340] text-[#99907b] hover:text-[#eae2d3] transition-colors cursor-pointer"
+                  onClick={controller.abrirModalRelatorio}
+                  title="Ver Relatório de Atendimentos"
+                  className="flex items-center gap-1.5 font-sora text-xs font-semibold px-3.5 py-1.5 rounded-lg bg-[#110e06] border border-[#e9c340]/50 hover:border-[#e9c340] hover:bg-[#2d2a20] text-[#e9c340] transition-colors cursor-pointer"
                 >
                   <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                    <polyline points="7 10 12 15 17 10" />
-                    <line x1="12" y1="15" x2="12" y2="3" />
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                    <polyline points="14 2 14 8 20 8" />
+                    <line x1="16" y1="13" x2="8" y2="13" />
+                    <line x1="16" y1="17" x2="8" y2="17" />
+                    <polyline points="10 9 9 9 8 9" />
                   </svg>
+                  <span>Relatório de Atendimentos</span>
                 </button>
               </div>
             </div>
 
             {/* Tabela de Clientes */}
-            <div className="overflow-x-auto">
+            <div className="overflow-x-auto flex-1">
               <table className="w-full text-left border-collapse">
                 <thead>
                   <tr className="border-b border-[#38342b] bg-[#110e06]/60 text-[10px] font-mono text-[#99907b] uppercase tracking-wider">
@@ -260,21 +266,23 @@ export function ClientesView() {
             </div>
 
             {/* Rodapé de Paginação Inteligente */}
-            <Pagination
-              paginaAtual={controller.paginaAtual}
-              totalPaginas={totalPaginas}
-              totalRegistros={totalRegistros}
-              itensPorPagina={controller.itensPorPagina}
-              opcoesItensPorPagina={[10, 15, 25, 50, 100]}
-              registroNome="clientes"
-              textoCustomizado={
-                !isTodos
-                  ? `Exibindo ${listaExibida.length} de ${listaExibida.length} aniversariantes para ${formatarDataBR(controller.dataAniversariantes)}`
-                  : undefined
-              }
-              aoMudarPagina={controller.setPaginaAtual}
-              aoMudarItensPorPagina={isTodos ? controller.setItensPorPagina : undefined}
-            />
+            <div className="rounded-b-xl overflow-hidden mt-auto">
+              <Pagination
+                paginaAtual={controller.paginaAtual}
+                totalPaginas={totalPaginas}
+                totalRegistros={totalRegistros}
+                itensPorPagina={controller.itensPorPagina}
+                opcoesItensPorPagina={[10, 15, 25, 50, 100]}
+                registroNome="clientes"
+                textoCustomizado={
+                  !isTodos
+                    ? `Exibindo ${listaExibida.length} de ${listaExibida.length} aniversariantes para ${formatarDataBR(controller.dataAniversariantes)}`
+                    : undefined
+                }
+                aoMudarPagina={controller.setPaginaAtual}
+                aoMudarItensPorPagina={isTodos ? controller.setItensPorPagina : undefined}
+              />
+            </div>
           </div>
         </div>
       </main>
@@ -283,6 +291,7 @@ export function ClientesView() {
       <ModalNovoCliente />
       <ModalPerfilCliente />
       <ModalExcluirCliente />
+      <ModalRelatorioClientes />
     </div>
   );
 }

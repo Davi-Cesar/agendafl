@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { Cliente } from '../schemas/cliente.schema';
+import type { Cliente, HistoricoClienteItem } from '../schemas/cliente.schema';
 import type { AbaClientes } from '../types/clientes.types';
 import * as service from '../services/clientes.service';
 
@@ -22,8 +22,16 @@ interface ClientesStore {
   modalNovoAberto: boolean;
   modalPerfilAberto: boolean;
   modalExcluirAberto: boolean;
+  modalRelatorioAberto: boolean;
   clienteSelecionado: Cliente | null;
   clienteParaEditar: Cliente | null;
+
+  historicoCliente: HistoricoClienteItem[];
+  carregandoHistorico: boolean;
+  nomesProfissionais: string[];
+
+  relatorioAtendimentos: HistoricoClienteItem[];
+  carregandoRelatorio: boolean;
 
   setAbaAtiva: (aba: AbaClientes) => void;
   setBusca: (busca: string) => void;
@@ -34,10 +42,14 @@ interface ClientesStore {
   carregarClientes: () => Promise<void>;
   salvarCliente: (dados: Partial<Cliente>) => Promise<Cliente>;
   excluirCliente: (id: string) => Promise<void>;
+  carregarHistoricoCliente: (clienteId: string) => Promise<void>;
+  carregarRelatorioAtendimentos: () => Promise<void>;
 
   abrirModalNovo: (cliente?: Cliente | null) => void;
   abrirPerfilCliente: (cliente: Cliente) => void;
   abrirModalExcluir: (cliente?: Cliente | null) => void;
+  abrirModalRelatorio: () => void;
+  fecharModalRelatorio: () => void;
   fecharModais: () => void;
 }
 
@@ -62,8 +74,16 @@ export const useClientesStore = create<ClientesStore>((set, get) => ({
   modalNovoAberto: false,
   modalPerfilAberto: false,
   modalExcluirAberto: false,
+  modalRelatorioAberto: false,
   clienteSelecionado: null,
   clienteParaEditar: null,
+
+  historicoCliente: [],
+  carregandoHistorico: false,
+  nomesProfissionais: [],
+
+  relatorioAtendimentos: [],
+  carregandoRelatorio: false,
 
   setAbaAtiva: (aba) => {
     set({ abaAtiva: aba, paginaAtual: 1 });
@@ -139,17 +159,63 @@ export const useClientesStore = create<ClientesStore>((set, get) => ({
     }
   },
 
+  carregarHistoricoCliente: async (clienteId) => {
+    set({ carregandoHistorico: true, historicoCliente: [] });
+    try {
+      const [historico, nomesProf] = await Promise.all([
+        service.buscarHistoricoAtendimentos(clienteId),
+        service.buscarNomesProfissionais(),
+      ]);
+      set({
+        historicoCliente: historico,
+        nomesProfissionais: nomesProf,
+        carregandoHistorico: false,
+      });
+    } catch (err) {
+      console.error('Erro ao carregar histórico do cliente:', err);
+      set({ historicoCliente: [], carregandoHistorico: false });
+    }
+  },
+
+  carregarRelatorioAtendimentos: async () => {
+    set({ carregandoRelatorio: true });
+    try {
+      const [relatorio, nomesProf] = await Promise.all([
+        service.buscarHistoricoAtendimentos(),
+        service.buscarNomesProfissionais(),
+      ]);
+      set({
+        relatorioAtendimentos: relatorio,
+        nomesProfissionais: nomesProf,
+        carregandoRelatorio: false,
+      });
+    } catch (err) {
+      console.error('Erro ao carregar relatório de atendimentos:', err);
+      set({ relatorioAtendimentos: [], carregandoRelatorio: false });
+    }
+  },
+
   abrirModalNovo: (cliente = null) => {
     set({ modalNovoAberto: true, clienteParaEditar: cliente, modalPerfilAberto: false });
   },
 
   abrirPerfilCliente: (cliente) => {
     set({ modalPerfilAberto: true, clienteSelecionado: cliente });
+    get().carregarHistoricoCliente(cliente.id);
   },
 
   abrirModalExcluir: (cliente = null) => {
     const target = cliente || get().clienteSelecionado;
     set({ modalExcluirAberto: true, clienteSelecionado: target });
+  },
+
+  abrirModalRelatorio: () => {
+    set({ modalRelatorioAberto: true });
+    get().carregarRelatorioAtendimentos();
+  },
+
+  fecharModalRelatorio: () => {
+    set({ modalRelatorioAberto: false });
   },
 
   fecharModais: () => {
@@ -158,6 +224,7 @@ export const useClientesStore = create<ClientesStore>((set, get) => ({
       modalPerfilAberto: false,
       modalExcluirAberto: false,
       clienteParaEditar: null,
+      historicoCliente: [],
     });
   },
 }));

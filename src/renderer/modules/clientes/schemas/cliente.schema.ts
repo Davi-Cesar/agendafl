@@ -30,3 +30,18 @@ export const CriarClienteDTOSchema = z.object({
 });
 
 export type CriarClienteDTO = z.infer<typeof CriarClienteDTOSchema>;
+
+export const HistoricoClienteItemSchema = z.object({
+  id: z.string(),
+  clienteId: z.string(),
+  clienteNome: z.string(),
+  servicoNome: z.string(),
+  profissionalNome: z.string(),
+  data: z.string(), // YYYY-MM-DD
+  horario: z.string().optional(),
+  valor: z.number(),
+  comandaNumero: z.string().optional(),
+  status: z.enum(['concluido', 'em_atendimento', 'agendado']).default('concluido'),
+});
+
+export type HistoricoClienteItem = z.infer<typeof HistoricoClienteItemSchema>;
