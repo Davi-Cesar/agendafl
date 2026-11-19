@@ -11,7 +11,6 @@ export function useModalPerfilClienteController() {
   const abrirModalNovo = useClientesStore((s) => s.abrirModalNovo);
   const abrirModalExcluir = useClientesStore((s) => s.abrirModalExcluir);
 
-  const [filtroServico, setFiltroServico] = useState('todos');
   const [filtroProfissional, setFiltroProfissional] = useState('todos');
 
   const listaProfissionais = useMemo(() => {
@@ -19,20 +18,13 @@ export function useModalPerfilClienteController() {
     return Array.from(new Set([...nomesProfissionais, ...doHistorico])).filter(Boolean).sort();
   }, [historicoCliente, nomesProfissionais]);
 
-  const listaServicos = useMemo(() => {
-    return Array.from(new Set(historicoCliente.map((h) => h.servicoNome))).filter(Boolean).sort();
-  }, [historicoCliente]);
-
   const historicoFiltrado = useMemo(() => {
     return historicoCliente.filter((item) => {
-      const matchProf = filtroProfissional === 'todos' || item.profissionalNome === filtroProfissional;
-      const matchServico = filtroServico === 'todos' || item.servicoNome === filtroServico;
-      return matchProf && matchServico;
+      return filtroProfissional === 'todos' || item.profissionalNome === filtroProfissional;
     });
-  }, [historicoCliente, filtroServico, filtroProfissional]);
+  }, [historicoCliente, filtroProfissional]);
 
   const handleFechar = () => {
-    setFiltroServico('todos');
     setFiltroProfissional('todos');
     fecharModais();
   };
@@ -55,12 +47,9 @@ export function useModalPerfilClienteController() {
     historicoCliente,
     historicoFiltrado,
     carregandoHistorico,
-    filtroServico,
-    setFiltroServico,
     filtroProfissional,
     setFiltroProfissional,
     listaProfissionais,
-    listaServicos,
     handleFechar,
     handleEditar,
     handleExcluir,

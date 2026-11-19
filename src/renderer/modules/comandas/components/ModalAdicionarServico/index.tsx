@@ -1,5 +1,6 @@
 import React from 'react';
 import { useModalAdicionarServicoController, UseModalAdicionarServicoProps } from './controller';
+import { NumberInput } from '@shared/ui/NumberInput';
 
 export function ModalAdicionarServico(props: UseModalAdicionarServicoProps) {
   const controller = useModalAdicionarServicoController(props);
@@ -65,13 +66,15 @@ export function ModalAdicionarServico(props: UseModalAdicionarServicoProps) {
               <label className="block font-mono text-[10px] text-[#99907b] uppercase mb-1">
                 VALOR DO SERVIÇO (R$)
               </label>
-              <input
-                type="number"
-                min="0"
-                step="5"
+              <NumberInput
+                min={0}
+                step={5}
                 value={controller.valorCustomizado}
-                onChange={(e) => controller.setValorCustomizado(Number(e.target.value))}
-                className="w-full bg-[#110e06] border border-[#38342b] focus:border-[#e9c340] outline-none rounded px-3 py-2 text-xs text-[#eae2d3] font-mono"
+                onChange={(val) => controller.setValorCustomizado(val)}
+                className="w-full h-9"
+                inputClassName="px-3 py-2 text-xs font-mono"
+                placeholder="0,00"
+                prefix="R$"
               />
             </div>
           </div>

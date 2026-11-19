@@ -1,9 +1,19 @@
 import { create } from 'zustand';
 import * as agendaService from '../services/agenda.service';
 import type { AgendaStore } from '../types/agenda.types';
-import type { Agendamento, CriarAgendamentoInput } from '../schemas/agendamento.schema';
+import type {
+  Agendamento,
+  CriarAgendamentoInput,
+  AtualizarAgendamentoInput,
+} from '../schemas/agendamento.schema';
 import { eventBus } from '@shared/lib/events';
 import { getDataHojeLocal } from '@shared/lib/formatters';
+import {
+  obterOrdemSalva,
+  salvarOrdem,
+  limparOrdemSalva,
+  aplicarOrdemSalva,
+} from '../utils/ordemProfissionais';
 
 export const useAgendaStore = create<AgendaStore>((set, get) => ({
   agendamentos: [],
@@ -17,8 +27,10 @@ export const useAgendaStore = create<AgendaStore>((set, get) => ({
   modalNovoAberto: false,
   modalNovoPrefill: null,
   agendamentoSelecionado: null,
+  movimentoAnimacao: null,
   comandaAtivaView: null,
   modalAlertaCaixaFechadoAberto: false,
+  ordemPersonalizadaAtiva: obterOrdemSalva().length > 0,
 
   setDataSelecionada: (dataStr: string) => {
     set({ dataSelecionada: dataStr });
@@ -38,9 +50,14 @@ export const useAgendaStore = create<AgendaStore>((set, get) => ({
         agendaService.buscarProfissionais(dataSel),
         agendaService.buscarHorariosEExcecoesDosProfissionais(),
       ]);
+
+      const ordemSalva = obterOrdemSalva();
+      const profsOrdenados = aplicarOrdemSalva(profissionais, ordemSalva);
+
       set({
         agendamentos,
-        profissionais,
+        profissionais: profsOrdenados,
+        ordemPersonalizadaAtiva: ordemSalva.length > 0,
         horariosMap: horEex.horariosMap,
         excecoesMap: horEex.excecoesMap,
         carregando: false,
@@ -51,6 +68,45 @@ export const useAgendaStore = create<AgendaStore>((set, get) => ({
     }
   },
 
+  reordenarProfissionais: (origemId: string, destinoId: string, side: 'left' | 'right' = 'left') => {
+    set((state) => {
+      const lista = [...state.profissionais];
+      const fromIdx = lista.findIndex((p) => p.id === origemId);
+      if (fromIdx === -1) return state;
+
+      const [item] = lista.splice(fromIdx, 1);
+      let toIdx = lista.findIndex((p) => p.id === destinoId);
+
+      if (toIdx === -1) {
+        lista.push(item);
+      } else {
+        if (side === 'right') {
+          toIdx += 1;
+        }
+        lista.splice(toIdx, 0, item);
+      }
+
+      const novaOrdem = lista.map((p) => p.id);
+      salvarOrdem(novaOrdem);
+
+      return {
+        profissionais: lista,
+        ordemPersonalizadaAtiva: true,
+      };
+    });
+  },
+
+  resetarOrdemProfissionais: () => {
+    limparOrdemSalva();
+    set((state) => {
+      const lista = [...state.profissionais].sort((a, b) => a.nome.localeCompare(b.nome));
+      return {
+        profissionais: lista,
+        ordemPersonalizadaAtiva: false,
+      };
+    });
+  },
+
   criarAgendamento: async (input: CriarAgendamentoInput) => {
     set({ carregando: true, erro: null });
     try {
@@ -59,6 +115,50 @@ export const useAgendaStore = create<AgendaStore>((set, get) => ({
       set({ modalNovoAberto: false, modalNovoPrefill: null, carregando: false });
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Erro ao criar agendamento no Supabase';
+      set({ erro: message, carregando: false });
+      throw err;
+    }
+  },
+
+  atualizarAgendamento: async (input: AtualizarAgendamentoInput) => {
+    const anterior = get().agendamentos.find((a) => a.id === input.id);
+    set({ carregando: true, erro: null });
+    try {
+      await agendaService.atualizarAgendamentoNoSupabase(input);
+      await get().carregarAgenda();
+
+      const mudouPosicao =
+        anterior &&
+        (anterior.profissionalId !== input.profissionalId ||
+          anterior.horarioInicio !== input.horarioInicio);
+
+      if (mudouPosicao && anterior) {
+        const animTimestamp = Date.now();
+        set({
+          agendamentoSelecionado: null,
+          carregando: false,
+          movimentoAnimacao: {
+            agendamentoId: input.id,
+            origemProfissionalId: anterior.profissionalId,
+            destinoProfissionalId: input.profissionalId,
+            origemHorarioInicio: anterior.horarioInicio,
+            origemHorarioFim: anterior.horarioFim,
+            destinoHorarioInicio: input.horarioInicio,
+            destinoHorarioFim: input.horarioFim,
+            timestamp: animTimestamp,
+          },
+        });
+        setTimeout(() => {
+          const atual = get().movimentoAnimacao;
+          if (atual && atual.timestamp === animTimestamp) {
+            set({ movimentoAnimacao: null });
+          }
+        }, 1400);
+      } else {
+        set({ agendamentoSelecionado: null, carregando: false });
+      }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Erro ao atualizar agendamento';
       set({ erro: message, carregando: false });
       throw err;
     }
@@ -102,6 +202,10 @@ export const useAgendaStore = create<AgendaStore>((set, get) => ({
 
   selecionarAgendamento: (agendamento) => {
     set({ agendamentoSelecionado: agendamento });
+  },
+
+  limparMovimentoAnimacao: () => {
+    set({ movimentoAnimacao: null });
   },
 
   setComandaAtivaView: (view) => {

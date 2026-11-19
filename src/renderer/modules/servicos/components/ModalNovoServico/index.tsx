@@ -1,5 +1,6 @@
 import React from 'react';
 import { useModalNovoServicoController } from './controller';
+import { NumberInput } from '@shared/ui/NumberInput';
 
 export function ModalNovoServico() {
   const controller = useModalNovoServicoController();
@@ -136,45 +137,46 @@ export function ModalNovoServico() {
               <label className="block text-[11px] font-mono text-[#99907b] uppercase tracking-wider mb-2">
                 PREÇO (R$) *
               </label>
-              <div className="relative flex items-center">
-                <span className="absolute left-3.5 text-xs font-mono text-[#99907b]">R$</span>
-                <input
-                  type="text"
-                  required
-                  placeholder="0,00"
-                  value={controller.preco}
-                  onChange={(e) => controller.setPreco(e.target.value)}
-                  className="w-full bg-[#110e06] border border-[#38342b] focus:border-[#e9c340] outline-none rounded-md pl-10 pr-4 py-2.5 text-xs font-mono text-[#eae2d3] placeholder-[#99907b] transition-all"
-                />
-              </div>
+              <NumberInput
+                min={0}
+                step={5}
+                required
+                placeholder="0,00"
+                value={controller.preco}
+                onRawChange={(raw) => controller.setPreco(raw)}
+                className="w-full h-10"
+                inputClassName="py-2.5 text-xs font-mono"
+                prefix="R$"
+              />
             </div>
 
             <div>
               <label className="block text-[11px] font-mono text-[#99907b] uppercase tracking-wider mb-2">
                 DURAÇÃO (MIN) *
               </label>
-              <div className="relative flex items-center">
-                <svg
-                  className="w-4 h-4 text-[#99907b] absolute left-3.5"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                >
-                  <circle cx="12" cy="12" r="10" />
-                  <polyline points="12 6 12 12 16 14" />
-                </svg>
-                <input
-                  type="number"
-                  required
-                  min={5}
-                  max={480}
-                  step={5}
-                  value={controller.duracao}
-                  onChange={(e) => controller.setDuracao(parseInt(e.target.value, 10) || 0)}
-                  className="w-full bg-[#110e06] border border-[#38342b] focus:border-[#e9c340] outline-none rounded-md pl-10 pr-4 py-2.5 text-xs font-mono text-[#eae2d3] transition-all"
-                />
-              </div>
+              <NumberInput
+                min={5}
+                max={480}
+                step={5}
+                required
+                placeholder="30"
+                value={controller.duracao}
+                onChange={(val) => controller.setDuracao(val)}
+                className="w-full h-10"
+                inputClassName="py-2.5 text-xs font-mono"
+                prefix={
+                  <svg
+                    className="w-4 h-4 text-[#99907b]"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                  >
+                    <circle cx="12" cy="12" r="10" />
+                    <polyline points="12 6 12 12 16 14" />
+                  </svg>
+                }
+              />
             </div>
           </div>
 

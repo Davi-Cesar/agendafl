@@ -333,6 +333,17 @@ export function ProfissionaisView() {
                         Horários salvos com sucesso!
                       </span>
                     )}
+
+                    {controller.erroHorarios && (
+                      <span className="font-mono text-xs px-3 py-1.5 rounded-lg bg-[#93000a]/20 text-[#ffb4ab] border border-[#ffb4ab]/40 font-bold animate-in fade-in flex items-center gap-1.5" title={controller.erroHorarios}>
+                        <svg className="w-3.5 h-3.5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                          <circle cx="12" cy="12" r="10" />
+                          <line x1="12" y1="8" x2="12" y2="12" />
+                          <line x1="12" y1="16" x2="12.01" y2="16" />
+                        </svg>
+                        <span>{controller.erroHorarios}</span>
+                      </span>
+                    )}
                   </div>
 
                   <div className="flex flex-wrap items-center gap-2.5">
@@ -557,7 +568,7 @@ export function ProfissionaisView() {
                                   >
                                     <div className="flex flex-col min-w-0 flex-1">
                                       <span className="font-mono font-bold truncate">
-                                        {isExtra ? '⚡ Atendimento Extra:' : '🚫 Bloqueio/Ausência:'} {exc.inicio} - {exc.fim}
+                                        {isExtra ? '••• Atendimento Extra:' : '🚫 Bloqueio/Ausência:'} {exc.inicio} - {exc.fim}
                                       </span>
                                       {exc.data && <span className="font-mono text-[10px] opacity-80 mt-0.5">Data: {exc.data}</span>}
                                       {exc.motivo && <span className="text-[10px] opacity-90 truncate mt-0.5">{exc.motivo}</span>}

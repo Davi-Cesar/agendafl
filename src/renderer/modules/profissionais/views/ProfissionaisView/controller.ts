@@ -10,6 +10,7 @@ export function useProfissionaisViewController() {
   const carregando = useProfissionaisStore((s) => s.carregando);
   const salvandoHorarios = useProfissionaisStore((s) => s.salvandoHorarios);
   const horariosSalvosSucesso = useProfissionaisStore((s) => s.horariosSalvosSucesso);
+  const erroHorarios = useProfissionaisStore((s) => s.erroHorarios);
 
   const setBusca = useProfissionaisStore((s) => s.setBusca);
   const setProfissionalSelecionadoId = useProfissionaisStore((s) => s.setProfissionalSelecionadoId);
@@ -115,6 +116,7 @@ export function useProfissionaisViewController() {
     carregando,
     salvandoHorarios,
     horariosSalvosSucesso,
+    erroHorarios,
     setProfissionalSelecionadoId,
     handleNovoProfissional: () => setModalNovoAberto(true, null),
     handleEditarProfissional: () => {

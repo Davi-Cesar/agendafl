@@ -65,8 +65,8 @@ export async function buscarExcecoesDoProfissional(profissionalId: string): Prom
     id: e.id,
     profissionalId: e.profissional_id,
     data: e.data,
-    inicio: e.horario_inicio?.slice(0, 5) || e.inicio || '08:00',
-    fim: e.horario_fim?.slice(0, 5) || e.fim || '12:00',
+    inicio: e.inicio?.slice(0, 5) || e.horario_inicio?.slice(0, 5) || '08:00',
+    fim: e.fim?.slice(0, 5) || e.horario_fim?.slice(0, 5) || '12:00',
     tipo: (e.tipo === 'indisponibilidade' ? 'indisponibilidade' : e.tipo) || 'atendimento_extra',
     motivo: e.motivo || '',
   }));
@@ -125,16 +125,21 @@ export async function buscarHorariosDoProfissional(profissionalId: string): Prom
       if (!setIds.has(e.id)) excecoesCombinadas.push(e);
     });
 
+    const manhaInicio = h.manha_inicio?.slice(0, 5) || '08:00';
+    const manhaFim = h.manha_fim?.slice(0, 5) || '11:00';
+    const tardeInicio = h.tarde_inicio?.slice(0, 5) || '13:30';
+    const tardeFim = h.tarde_fim?.slice(0, 5) || '17:00';
+
     return {
       id: h.id,
       profissionalId: h.profissional_id,
       diaSemana: diaNum,
       ativo: Boolean(h.ativo),
-      manhaInicio: h.manha_inicio?.slice(0, 5) || '08:00',
-      manhaFim: h.manha_fim?.slice(0, 5) || '11:00',
-      tardeInicio: h.tarde_inicio?.slice(0, 5) || '13:30',
-      tardeFim: h.tarde_fim?.slice(0, 5) || '17:00',
-      intervaloAlmoco: h.intervalo_almoco || '11:00 - 13:30',
+      manhaInicio,
+      manhaFim,
+      tardeInicio,
+      tardeFim,
+      intervaloAlmoco: `${manhaFim} - ${tardeInicio}`,
       excecoes: excecoesCombinadas,
     };
   });
@@ -225,12 +230,11 @@ export async function salvarHorariosDoProfissional(
   const payloadHorarios = horarios.map((h) => ({
     profissional_id: profissionalId,
     dia_semana: h.diaSemana,
-    ativo: h.ativo,
-    manha_inicio: h.manhaInicio,
-    manha_fim: h.manhaFim,
-    tarde_inicio: h.tardeInicio,
-    tarde_fim: h.tardeFim,
-    intervalo_almoco: h.intervaloAlmoco || '11:00 - 13:30',
+    ativo: Boolean(h.ativo),
+    manha_inicio: h.ativo && h.manhaInicio ? h.manhaInicio : null,
+    manha_fim: h.ativo && h.manhaFim ? h.manhaFim : null,
+    tarde_inicio: h.ativo && h.tardeInicio ? h.tardeInicio : null,
+    tarde_fim: h.ativo && h.tardeFim ? h.tardeFim : null,
   }));
 
   const { error: errH } = await supabase
@@ -238,7 +242,8 @@ export async function salvarHorariosDoProfissional(
     .upsert(payloadHorarios, { onConflict: 'profissional_id,dia_semana' });
 
   if (errH) {
-    console.warn('Upsert de horários falhou ou tabela não existe:', errH);
+    console.error('Upsert de horários falhou no Supabase:', errH);
+    throw new Error(`Erro ao salvar horários: ${errH.message || 'Falha no banco de dados'}`);
   }
 
   // Tentar salvar exceções na tabela profissionais_excecoes se disponível
@@ -251,8 +256,8 @@ export async function salvarHorariosDoProfissional(
             id: e.id && e.id.length > 20 ? e.id : undefined,
             profissional_id: profissionalId,
             data: e.data,
-            horario_inicio: e.inicio,
-            horario_fim: e.fim,
+            inicio: e.inicio,
+            fim: e.fim,
             tipo: e.tipo,
             motivo: e.motivo || null,
           });
@@ -329,8 +334,8 @@ export async function adicionarExcecaoDiretaNoSupabase(
   const payload: any = {
     profissional_id: profissionalId,
     data: excecao.data,
-    horario_inicio: excecao.inicio,
-    horario_fim: excecao.fim,
+    inicio: excecao.inicio,
+    fim: excecao.fim,
     tipo: excecao.tipo,
     motivo: excecao.motivo || null,
   };
@@ -358,8 +363,8 @@ export async function adicionarExcecaoDiretaNoSupabase(
     id: data.id,
     profissionalId: data.profissional_id,
     data: data.data,
-    inicio: data.horario_inicio?.slice(0, 5) || excecao.inicio,
-    fim: data.horario_fim?.slice(0, 5) || excecao.fim,
+    inicio: data.inicio?.slice(0, 5) || data.horario_inicio?.slice(0, 5) || excecao.inicio,
+    fim: data.fim?.slice(0, 5) || data.horario_fim?.slice(0, 5) || excecao.fim,
     tipo: data.tipo,
     motivo: data.motivo || '',
   };

@@ -1,5 +1,6 @@
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import { useAgendaStore } from '../../store/agenda.store';
+import { useStatusCoresStore, STATUS_PADRAO } from '../../store/statusCores.store';
 import { useProfissionaisStore } from '@modules/profissionais';
 import { useCaixaStore } from '@modules/caixa';
 import { gerarSlots, calcGeometry } from '@shared/lib/utils';
@@ -8,6 +9,8 @@ import type { Agendamento, Profissional } from '../../schemas/agendamento.schema
 const GRADE_INICIO = '08:00';
 const GRADE_FIM = '19:00';
 const SLOT_MIN = 30;
+const SLOT_HEIGHT = 76;
+const COL_WIDTH = 240;
 
 function parseTimeToMins(tStr: string): number {
   if (!tStr) return 0;
@@ -30,6 +33,16 @@ export function useGradeHorariosController() {
   const filtro = useAgendaStore((s) => s.filtroProfissional);
   const abrirModalNovo = useAgendaStore((s) => s.abrirModalNovo);
   const selecionarAgendamento = useAgendaStore((s) => s.selecionarAgendamento);
+  const movimentoAnimacao = useAgendaStore((s) => s.movimentoAnimacao);
+  const statusList = useStatusCoresStore((s) => s.statusList);
+  const movingCardRef = useRef<HTMLDivElement | null>(null);
+
+  const getStatusConfig = useCallback(
+    (statusId: string) => {
+      return statusList.find((item) => item.id === statusId) || STATUS_PADRAO[0];
+    },
+    [statusList]
+  );
 
   const slots = useMemo(() => gerarSlots(GRADE_INICIO, GRADE_FIM, SLOT_MIN), []);
 
@@ -41,10 +54,68 @@ export function useGradeHorariosController() {
     );
   }, [profissionais, filtro]);
 
-  const gradeAltura = slots.length * 56;
+  const gradeAltura = slots.length * SLOT_HEIGHT;
 
   const setComandaAtivaView = useAgendaStore((s) => s.setComandaAtivaView);
   const abrirAlertaCaixaFechado = useAgendaStore((s) => s.abrirAlertaCaixaFechado);
+  const ordemPersonalizadaAtiva = useAgendaStore((s) => s.ordemPersonalizadaAtiva);
+  const reordenarProfissionais = useAgendaStore((s) => s.reordenarProfissionais);
+  const resetarOrdemProfissionais = useAgendaStore((s) => s.resetarOrdemProfissionais);
+
+  const [draggedProfId, setDraggedProfId] = useState<string | null>(null);
+  const [dragOverProfId, setDragOverProfId] = useState<string | null>(null);
+  const [dropIndicatorSide, setDropIndicatorSide] = useState<'left' | 'right' | null>(null);
+
+  const handleDragStart = useCallback((e: React.DragEvent, profId: string) => {
+    e.dataTransfer.setData('text/plain', profId);
+    e.dataTransfer.effectAllowed = 'move';
+    setDraggedProfId(profId);
+  }, []);
+
+  const handleDragOver = useCallback((e: React.DragEvent, targetProfId: string) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+
+    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+    const midX = rect.left + rect.width / 2;
+    const side: 'left' | 'right' = e.clientX < midX ? 'left' : 'right';
+
+    setDragOverProfId(targetProfId);
+    setDropIndicatorSide(side);
+  }, []);
+
+  const handleDragLeave = useCallback((e: React.DragEvent, targetProfId: string) => {
+    const related = e.relatedTarget as Node | null;
+    if (related && (e.currentTarget as HTMLElement).contains(related)) {
+      return;
+    }
+    if (dragOverProfId === targetProfId) {
+      setDragOverProfId(null);
+      setDropIndicatorSide(null);
+    }
+  }, [dragOverProfId]);
+
+  const handleDrop = useCallback(
+    (e: React.DragEvent, targetProfId: string) => {
+      e.preventDefault();
+      const sourceProfId = e.dataTransfer.getData('text/plain') || draggedProfId;
+
+      if (sourceProfId && targetProfId && sourceProfId !== targetProfId) {
+        reordenarProfissionais(sourceProfId, targetProfId, dropIndicatorSide || 'left');
+      }
+
+      setDraggedProfId(null);
+      setDragOverProfId(null);
+      setDropIndicatorSide(null);
+    },
+    [draggedProfId, dropIndicatorSide, reordenarProfissionais]
+  );
+
+  const handleDragEnd = useCallback(() => {
+    setDraggedProfId(null);
+    setDragOverProfId(null);
+    setDropIndicatorSide(null);
+  }, []);
 
   const getDisponibilidadeProfissionalNoSlot = useCallback(
     (profId: string, slotStr: string) => {
@@ -60,6 +131,7 @@ export function useGradeHorariosController() {
       const slotMin = parseTimeToMins(slotStr);
 
       let disponivel = false;
+      let atendePadrao = false;
       let isAtendimentoExtra = false;
       let isBloqueado = false;
       let motivoExcecao = '';
@@ -73,6 +145,7 @@ export function useGradeHorariosController() {
 
         if ((slotMin >= mInicio && slotMin < mFim) || (slotMin >= tInicio && slotMin < tFim)) {
           disponivel = true;
+          atendePadrao = true;
         }
       }
 
@@ -96,7 +169,9 @@ export function useGradeHorariosController() {
         }
       });
 
-      return { disponivel, isAtendimentoExtra, isBloqueado, motivoExcecao };
+      const isExcecao = !atendePadrao || isAtendimentoExtra || isBloqueado;
+
+      return { disponivel, atendePadrao, isExcecao, isAtendimentoExtra, isBloqueado, motivoExcecao };
     },
     [dataSelecionada, horariosMap, excecoesMap]
   );
@@ -109,9 +184,28 @@ export function useGradeHorariosController() {
         abrirAlertaCaixaFechado();
         return;
       }
-      abrirModalNovo({ profissionalId, horario });
+
+      // Se já houver um agendamento curto dentro deste slot de 30min (ex: 08:00 às 08:10),
+      // sugere automaticamente o horário de término dele (ex: 08:10) para facilitar encaixes seguidos
+      const slotInicioMin = parseTimeToMins(horario);
+      const slotFimMin = slotInicioMin + SLOT_MIN;
+      const aptsNoSlot = agendamentos
+        .filter((a) => a.profissionalId === profissionalId && a.status !== 'faltou')
+        .map((a) => ({
+          ini: parseTimeToMins(a.horarioInicio),
+          fim: parseTimeToMins(a.horarioFim),
+        }))
+        .filter((a) => a.ini >= slotInicioMin && a.ini < slotFimMin)
+        .sort((a, b) => b.fim - a.fim);
+
+      let horarioSugerido = horario;
+      if (aptsNoSlot.length > 0 && aptsNoSlot[0].fim < slotFimMin) {
+        horarioSugerido = parseMinsToTime(aptsNoSlot[0].fim);
+      }
+
+      abrirModalNovo({ profissionalId, horario: horarioSugerido });
     },
-    [abrirModalNovo, abrirAlertaCaixaFechado]
+    [agendamentos, abrirModalNovo, abrirAlertaCaixaFechado]
   );
 
   const handleCardClick = useCallback(
@@ -137,6 +231,7 @@ export function useGradeHorariosController() {
           servico: apt.servico,
           horarioInicio: apt.horarioInicio,
           horarioFim: apt.horarioFim,
+          observacoes: apt.observacoes,
           comandaId: apt.comandaId,
           comandaNumero: apt.comandaNumero || '#0001',
           comandaStatus: apt.comandaStatus || 'finalizada',
@@ -219,11 +314,63 @@ export function useGradeHorariosController() {
     });
   }, [confirmModalData]);
 
+  useEffect(() => {
+    if (!movimentoAnimacao) return;
+    const rafId = window.requestAnimationFrame(() => {
+      movingCardRef.current?.scrollIntoView({
+        behavior: 'smooth',
+        block: 'nearest',
+        inline: 'center',
+      });
+    });
+    return () => window.cancelAnimationFrame(rafId);
+  }, [movimentoAnimacao]);
+
+  const getCardMoveAnimation = useCallback(
+    (apt: Agendamento, newTop: number) => {
+      if (!movimentoAnimacao || movimentoAnimacao.agendamentoId !== apt.id) {
+        return { isMoving: false, moveFromX: 0, moveFromY: 0 };
+      }
+
+      const fromIdx = profFiltrados.findIndex(
+        (p) => p.id === movimentoAnimacao.origemProfissionalId
+      );
+      const toIdx = profFiltrados.findIndex((p) => p.id === apt.profissionalId);
+
+      const moveFromX =
+        fromIdx !== -1 && toIdx !== -1 ? (fromIdx - toIdx) * COL_WIDTH : 0;
+      const oldTop = calcGeometry(
+        movimentoAnimacao.origemHorarioInicio,
+        movimentoAnimacao.origemHorarioFim,
+        GRADE_INICIO,
+        SLOT_MIN,
+        SLOT_HEIGHT
+      ).top;
+      const moveFromY = oldTop - newTop;
+
+      return { isMoving: true, moveFromX, moveFromY };
+    },
+    [movimentoAnimacao, profFiltrados]
+  );
+
   return {
     slots,
     profFiltrados,
     gradeAltura,
+    movimentoAnimacao,
+    movingCardRef,
+    getCardMoveAnimation,
     confirmModalData,
+    draggedProfId,
+    dragOverProfId,
+    dropIndicatorSide,
+    handleDragStart,
+    handleDragOver,
+    handleDragLeave,
+    handleDrop,
+    handleDragEnd,
+    ordemPersonalizadaAtiva,
+    resetarOrdemProfissionais,
     getDisponibilidadeProfissionalNoSlot,
     handleSlotClick,
     handleDisabledSlotClick,
@@ -232,7 +379,8 @@ export function useGradeHorariosController() {
     handleCardClick,
     handleAbrirComandaDireta,
     getAgendamentosDoProf,
-    calcGeometry: (inicio: string, fim: string) => calcGeometry(inicio, fim, GRADE_INICIO, SLOT_MIN, 56),
+    getStatusConfig,
+    calcGeometry: (inicio: string, fim: string) => calcGeometry(inicio, fim, GRADE_INICIO, SLOT_MIN, SLOT_HEIGHT),
   };
 }
 

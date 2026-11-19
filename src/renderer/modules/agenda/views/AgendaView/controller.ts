@@ -1,10 +1,24 @@
-import { useEffect, useMemo, useCallback, useState } from 'react';
+import { useEffect, useMemo, useCallback } from 'react';
 import { useAgendaStore } from '../../store/agenda.store';
+import { useStatusCoresStore } from '../../store/statusCores.store';
 import { useCaixaStore } from '@modules/caixa';
 import { formatDate } from '@shared/lib/utils';
+import { getDataHojeLocal } from '@shared/lib/formatters';
+
+function deslocarDataIso(dataStr: string, dias: number): string {
+  const partes = dataStr.split('-');
+  if (partes.length !== 3) return dataStr;
+  const d = new Date(Number(partes[0]), Number(partes[1]) - 1, Number(partes[2]));
+  d.setDate(d.getDate() + dias);
+  const yyyy = d.getFullYear();
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  const dd = String(d.getDate()).padStart(2, '0');
+  return `${yyyy}-${mm}-${dd}`;
+}
 
 export function useAgendaViewController() {
   const dataSelecionada = useAgendaStore((s) => s.dataSelecionada);
+  const setDataSelecionada = useAgendaStore((s) => s.setDataSelecionada);
   const filtroProfissional = useAgendaStore((s) => s.filtroProfissional);
   const setFiltroProfissional = useAgendaStore((s) => s.setFiltroProfissional);
   const abrirModalNovo = useAgendaStore((s) => s.abrirModalNovo);
@@ -21,8 +35,18 @@ export function useAgendaViewController() {
   const modalAlertaCaixaFechadoAberto = useAgendaStore((s) => s.modalAlertaCaixaFechadoAberto);
   const abrirAlertaCaixaFechado = useAgendaStore((s) => s.abrirAlertaCaixaFechado);
   const fecharAlertaCaixaFechado = useAgendaStore((s) => s.fecharAlertaCaixaFechado);
+  const ordemPersonalizadaAtiva = useAgendaStore((s) => s.ordemPersonalizadaAtiva);
+  const resetarOrdemProfissionais = useAgendaStore((s) => s.resetarOrdemProfissionais);
+  const statusList = useStatusCoresStore((s) => s.statusList);
+  const abrirModalStatusCores = useStatusCoresStore((s) => s.abrirModal);
 
   const isCaixaAberto = Boolean(caixaAtivo);
+  const hojeStr = getDataHojeLocal();
+  const isHoje = dataSelecionada <= hojeStr;
+  const hojeDate = useMemo(() => {
+    const partes = hojeStr.split('-');
+    return new Date(Number(partes[0]), Number(partes[1]) - 1, Number(partes[2]));
+  }, [hojeStr]);
 
   useEffect(() => {
     carregarAgenda();
@@ -34,6 +58,31 @@ export function useAgendaViewController() {
     if (!raw) return '';
     return raw.charAt(0).toUpperCase() + raw.slice(1);
   }, [dataSelecionada]);
+
+  const handleDiaAnterior = useCallback(() => {
+    const anterior = deslocarDataIso(dataSelecionada, -1);
+    const hoje = getDataHojeLocal();
+    if (anterior < hoje) return;
+    setDataSelecionada(anterior);
+  }, [dataSelecionada, setDataSelecionada]);
+
+  const handleProximoDia = useCallback(() => {
+    setDataSelecionada(deslocarDataIso(dataSelecionada, 1));
+  }, [dataSelecionada, setDataSelecionada]);
+
+  const handleIrParaHoje = useCallback(() => {
+    setDataSelecionada(getDataHojeLocal());
+  }, [setDataSelecionada]);
+
+  const handleSelecionarData = useCallback(
+    (novaData: string) => {
+      if (!novaData) return;
+      const hoje = getDataHojeLocal();
+      if (novaData < hoje) return;
+      setDataSelecionada(novaData);
+    },
+    [setDataSelecionada]
+  );
 
   const handleSearchInput = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -63,7 +112,14 @@ export function useAgendaViewController() {
   }, [fecharAlertaCaixaFechado, abrirModalAbrir]);
 
   return {
+    dataSelecionada,
     dataFormatada,
+    isHoje,
+    hojeDate,
+    handleDiaAnterior,
+    handleProximoDia,
+    handleIrParaHoje,
+    handleSelecionarData,
     filtroProfissional,
     handleSearchInput,
     abrirModalNovo: abrirModalNovoComValidacao,
@@ -74,6 +130,10 @@ export function useAgendaViewController() {
     fecharAlertaCaixa,
     handleAbrirCaixaNoAlerta,
     modalAbrirCaixaAberto,
+    ordemPersonalizadaAtiva,
+    resetarOrdemProfissionais,
+    statusList,
+    abrirModalStatusCores,
   };
 }
 

@@ -113,28 +113,15 @@ export function ModalPerfilCliente() {
                 </span>
               </div>
 
-              {/* Seletores clicáveis de Serviço e Profissional */}
+              {/* Seletor clicável de Profissional */}
               {controller.historicoCliente.length > 0 && (
-                <div className="flex flex-wrap items-center gap-2">
-                  <select
-                    value={controller.filtroServico}
-                    onChange={(e) => controller.setFiltroServico(e.target.value)}
-                    className="bg-[#110e06] border border-[#38342b] focus:border-[#e9c340] outline-none rounded-md px-2.5 py-1.5 text-xs text-[#eae2d3] cursor-pointer"
-                  >
-                    <option value="todos">Todos os Serviços</option>
-                    {controller.listaServicos.map((srv) => (
-                      <option key={srv} value={srv}>
-                        {srv}
-                      </option>
-                    ))}
-                  </select>
-
+                <div className="flex items-center gap-2">
                   <select
                     value={controller.filtroProfissional}
                     onChange={(e) => controller.setFiltroProfissional(e.target.value)}
                     className="bg-[#110e06] border border-[#38342b] focus:border-[#e9c340] outline-none rounded-md px-2.5 py-1.5 text-xs text-[#eae2d3] cursor-pointer"
                   >
-                    <option value="todos">Selecionar Profissional (Todos)</option>
+                    <option value="todos">Selecionar Profissional</option>
                     {controller.listaProfissionais.map((prof) => (
                       <option key={prof} value={prof}>
                         {prof}

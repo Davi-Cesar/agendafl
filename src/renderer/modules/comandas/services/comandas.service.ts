@@ -38,11 +38,21 @@ export async function buscarComandas(): Promise<ComandaListItem[]> {
 
   return (data ?? []).map((c: any) => {
     const apt = Array.isArray(c.agendamentos) ? c.agendamentos[0] : c.agendamentos;
-    const emItens = Array.isArray(c.comanda_itens) && c.comanda_itens.length > 0 ? c.comanda_itens[0] : null;
+    const listaItens = Array.isArray(c.comanda_itens) ? c.comanda_itens : [];
+    const nomesServicos = listaItens.map((it: any) => it.servicos?.nome).filter(Boolean);
+    const nomesProfs = Array.from(
+      new Set(listaItens.map((it: any) => it.profissionais?.nome).filter(Boolean))
+    );
 
     const clienteNome = c.clientes?.nome || 'Cliente';
-    const servicoNome = apt?.servicos?.nome || emItens?.servicos?.nome || 'Atendimento';
-    const profissionalNome = apt?.profissionais?.nome || emItens?.profissionais?.nome || 'Profissional';
+    const servicoNome =
+      nomesServicos.length > 0
+        ? nomesServicos.join(' + ')
+        : apt?.servicos?.nome || 'Atendimento';
+    const profissionalNome =
+      nomesProfs.length > 0
+        ? nomesProfs.join(', ')
+        : apt?.profissionais?.nome || 'Profissional';
     const hInicio = (apt?.horario_inicio || '08:00').slice(0, 5);
     const hFim = (apt?.horario_fim || '09:00').slice(0, 5);
 
@@ -70,13 +80,16 @@ export async function buscarComandasFinalizadas(): Promise<ComandaListItem[]> {
 
 export interface SalvarComandaPayload {
   agendamentoId?: string;
+  agendamentoIds?: string[];
   clienteId?: string;
   clienteNome?: string;
+  observacoes?: string;
   subtotal: number;
   desconto: number;
   valorTotal: number;
   itens?: Array<{
     id?: string;
+    agendamentoId?: string;
     servicoId?: string;
     profissionalId?: string;
     descricao: string;
@@ -96,6 +109,35 @@ export interface SalvarComandaPayload {
   }>;
 }
 
+async function sincronizarAgendamentosDaComanda(
+  agendamentoIds: string[],
+  comandaId: string,
+  comandaNumero: string,
+  observacoes?: string
+): Promise<void> {
+  if (agendamentoIds.length === 0) return;
+
+  const obsLimpa = observacoes?.trim() || '';
+
+  for (let i = 0; i < agendamentoIds.length; i++) {
+    const agId = agendamentoIds[i];
+    // O 1º agendamento já tem vínculo direto via comandas.agendamento_id, mas os agendamentos adicionais
+    // unificados na mesma comanda recebem a tag [COMANDA:id:#numero] para manter o vínculo ao recarregar.
+    const obsParaSalvar =
+      i === 0
+        ? obsLimpa || null
+        : `[COMANDA:${comandaId}:${comandaNumero}]${obsLimpa ? ` ${obsLimpa}` : ''}`;
+
+    await supabase
+      .from('agendamentos')
+      .update({
+        status: 'concluido',
+        observacoes: obsParaSalvar,
+      })
+      .eq('id', agId);
+  }
+}
+
 export async function finalizarComandaNoSupabase(
   payload: SalvarComandaPayload
 ): Promise<{ comandaId: string; comandaNumero: string }> {
@@ -104,15 +146,16 @@ export async function finalizarComandaNoSupabase(
   const isClienteUuid = resolvedClienteId && /^[0-9a-fA-F-]{36}$/.test(resolvedClienteId);
 
   if (!isClienteUuid) {
-    const nomeBusca = payload.clienteNome || 'Cliente';
-    const { data: clienteExist } = await supabase
+    const nomeBusca = (payload.clienteNome || 'Cliente').trim();
+    const { data: clientesEncontrados } = await supabase
       .from('clientes')
       .select('id')
       .ilike('nome', nomeBusca)
-      .maybeSingle();
+      .is('removido_em', null)
+      .limit(1);
 
-    if (clienteExist) {
-      resolvedClienteId = clienteExist.id;
+    if (clientesEncontrados && clientesEncontrados.length > 0) {
+      resolvedClienteId = clientesEncontrados[0].id;
     } else {
       const { data: novoCliente, error: errCli } = await supabase
         .from('clientes')
@@ -127,9 +170,32 @@ export async function finalizarComandaNoSupabase(
     }
   }
 
-  // 2. Resolve agendamento_id se for UUID válido
-  const isAgendamentoUuid = payload.agendamentoId && /^[0-9a-fA-F-]{36}$/.test(payload.agendamentoId);
-  const resolvedAgendamentoId = isAgendamentoUuid ? payload.agendamentoId : null;
+  // 2. Resolve lista de agendamento_ids válidos (suporte a múltiplos agendamentos na mesma comanda)
+  const rawIds =
+    payload.agendamentoIds && payload.agendamentoIds.length > 0
+      ? payload.agendamentoIds
+      : payload.agendamentoId
+      ? [payload.agendamentoId]
+      : [];
+  const agendamentoIdsValidas = Array.from(
+    new Set(rawIds.filter((id) => /^[0-9a-fA-F-]{36}$/.test(id)))
+  );
+  const resolvedAgendamentoId = agendamentoIdsValidas[0] || null;
+
+  // Trava contra duplicidade de comanda para o mesmo agendamento
+  if (resolvedAgendamentoId) {
+    const { data: comandaJaExistente } = await supabase
+      .from('comandas')
+      .select('id, numero_sequencial, status')
+      .eq('agendamento_id', resolvedAgendamentoId)
+      .eq('status', 'finalizada')
+      .limit(1);
+
+    if (comandaJaExistente && comandaJaExistente.length > 0) {
+      const numExistente = `#${String(comandaJaExistente[0].numero_sequencial || 1).padStart(4, '0')}`;
+      throw new Error(`Este agendamento já foi finalizado na Comanda ${numExistente}.`);
+    }
+  }
 
   // 2.5 Busca o caixa ativo (se houver) para vincular à comanda
   const { data: caixaAtivo } = await supabase
@@ -218,6 +284,13 @@ export async function finalizarComandaNoSupabase(
   });
 
   if (!rpcError && rpcData?.sucesso) {
+    await sincronizarAgendamentosDaComanda(
+      agendamentoIdsValidas,
+      rpcData.comanda_id,
+      rpcData.comanda_numero,
+      payload.observacoes
+    );
+
     return {
       comandaId: rpcData.comanda_id,
       comandaNumero: rpcData.comanda_numero,
@@ -324,12 +397,12 @@ export async function finalizarComandaNoSupabase(
     }
   }
 
-  if (resolvedAgendamentoId) {
-    await supabase
-      .from('agendamentos')
-      .update({ status: 'concluido' })
-      .eq('id', resolvedAgendamentoId);
-  }
+  await sincronizarAgendamentosDaComanda(
+    agendamentoIdsValidas,
+    comandaId,
+    comandaNumero,
+    payload.observacoes
+  );
 
   return { comandaId, comandaNumero };
 }

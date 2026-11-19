@@ -4,6 +4,7 @@ import { ModalAdicionarServico } from '../../components/ModalAdicionarServico';
 import { ModalDescontoItem } from '../../components/ModalDescontoItem';
 import { FORMAS_PAGAMENTO_OPTIONS } from '../../types/comandas.types';
 import { formatCurrency } from '@shared/lib/utils';
+import { NumberInput } from '@shared/ui/NumberInput';
 
 export function CriarComandaView({ dados }: CriarComandaViewProps) {
   const controller = useCriarComandaViewController(dados);
@@ -161,6 +162,31 @@ export function CriarComandaView({ dados }: CriarComandaViewProps) {
                   </span>
                 </div>
               )}
+            </div>
+
+            {/* Observações do Agendamento / Comanda */}
+            <div className="mt-4 pt-4 border-t border-[#38342b]">
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="font-mono text-[10px] text-[#e9c340] uppercase font-semibold flex items-center gap-1.5">
+                  <span>📝 OBSERVAÇÕES DO AGENDAMENTO / ATENDIMENTO</span>
+                </label>
+                {controller.dados?.observacoes && (
+                  <span className="font-mono text-[10px] px-2 py-0.5 rounded bg-[#e9c340]/15 text-[#e9c340] border border-[#e9c340]/40">
+                    Vinda do Agendamento
+                  </span>
+                )}
+              </div>
+              <textarea
+                value={controller.observacoes}
+                onChange={(e) => controller.setObservacoes(e.target.value)}
+                rows={2}
+                placeholder="Nenhuma observação registrada no agendamento. Você pode digitar notas aqui..."
+                className={`w-full rounded-md px-3 py-2 text-xs text-[#eae2d3] placeholder-[#99907b]/60 outline-none transition-all resize-none ${
+                  controller.observacoes.trim()
+                    ? 'bg-[#e9c340]/10 border border-[#e9c340]/50 focus:border-[#e9c340]'
+                    : 'bg-[#110e06] border border-[#38342b] focus:border-[#e9c340]'
+                }`}
+              />
             </div>
           </div>
 
@@ -389,14 +415,16 @@ export function CriarComandaView({ dados }: CriarComandaViewProps) {
 
                 {controller.dividirPagamento && (
                   <div className="flex items-center gap-2 pt-1">
-                    <span className="font-mono text-xs text-[#99907b]">Valor 1ª Forma: R$</span>
-                    <input
-                      type="number"
-                      min="0"
+                    <span className="font-mono text-xs text-[#99907b] shrink-0">Valor 1ª Forma: R$</span>
+                    <NumberInput
+                      min={0}
                       max={controller.total}
+                      step={5}
                       value={controller.valorForma1}
-                      onChange={(e) => controller.handleAlterarValorForma1(Number(e.target.value))}
-                      className="flex-1 bg-[#110e06] border border-[#38342b] focus:border-[#e9c340] outline-none rounded px-2 py-1 text-xs font-mono text-[#eae2d3]"
+                      onChange={(val) => controller.handleAlterarValorForma1(val)}
+                      className="flex-1 h-8"
+                      inputClassName="py-1 text-xs"
+                      placeholder="0,00"
                     />
                   </div>
                 )}
@@ -427,14 +455,16 @@ export function CriarComandaView({ dados }: CriarComandaViewProps) {
                   </div>
 
                   <div className="flex items-center gap-2 pt-1">
-                    <span className="font-mono text-xs text-[#99907b]">Valor 2ª Forma: R$</span>
-                    <input
-                      type="number"
-                      min="0"
+                    <span className="font-mono text-xs text-[#99907b] shrink-0">Valor 2ª Forma: R$</span>
+                    <NumberInput
+                      min={0}
                       max={controller.total}
+                      step={5}
                       value={controller.valorForma2}
-                      onChange={(e) => controller.setValorForma2(Number(e.target.value))}
-                      className="flex-1 bg-[#110e06] border border-[#38342b] focus:border-[#e9c340] outline-none rounded px-2 py-1 text-xs font-mono text-[#eae2d3]"
+                      onChange={(val) => controller.setValorForma2(val)}
+                      className="flex-1 h-8"
+                      inputClassName="py-1 text-xs"
+                      placeholder="0,00"
                     />
                   </div>
                 </div>

@@ -64,26 +64,10 @@ export function ModalRelatorioClientes() {
               value={controller.filtroProfissional}
               onChange={(e) => controller.setFiltroProfissional(e.target.value)}
             >
-              <option value="todos">Todos os Profissionais</option>
+              <option value="todos">Selecionar Profissional</option>
               {controller.listaProfissionais.map((prof) => (
                 <option key={prof} value={prof}>
                   {prof}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {/* Filtro por Serviço */}
-          <div>
-            <select
-              className="bg-[#1f1b13] border border-[#38342b] text-[#eae2d3] text-xs rounded-md px-3 py-2 focus:outline-none focus:border-[#e9c340] cursor-pointer max-w-[200px]"
-              value={controller.filtroServico}
-              onChange={(e) => controller.setFiltroServico(e.target.value)}
-            >
-              <option value="todos">Todos os Serviços</option>
-              {controller.listaServicos.map((srv) => (
-                <option key={srv} value={srv}>
-                  {srv}
                 </option>
               ))}
             </select>

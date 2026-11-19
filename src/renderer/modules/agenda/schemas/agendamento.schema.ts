@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-export const StatusAgendamentoSchema = z.enum(['agendado', 'em_atendimento', 'concluido', 'faltou']);
+export const StatusAgendamentoSchema = z.string().min(1);
 export const StatusComandaSchema = z.enum(['rascunho', 'finalizada', 'cancelada']);
 
 export const ProfissionalSchema = z.object({
@@ -44,9 +44,19 @@ export const CriarAgendamentoDTO = z.object({
   observacoes: z.string().optional(),
 });
 
+export const AtualizarAgendamentoDTO = z.object({
+  id: z.string().min(1, 'Agendamento inválido'),
+  profissionalId: z.string().min(1, 'Selecione um profissional'),
+  servico: z.string().min(1, 'Selecione um serviço'),
+  horarioInicio: z.string().regex(/^\d{2}:\d{2}$/, 'Informe o horário no formato HH:MM'),
+  horarioFim: z.string().regex(/^\d{2}:\d{2}$/, 'Informe o horário no formato HH:MM'),
+  observacoes: z.string().optional(),
+});
+
 export type StatusAgendamento = z.infer<typeof StatusAgendamentoSchema>;
 export type StatusComanda = z.infer<typeof StatusComandaSchema>;
 export type Profissional = z.infer<typeof ProfissionalSchema>;
 export type ServicoItem = z.infer<typeof ServicoItemSchema>;
 export type Agendamento = z.infer<typeof AgendamentoSchema>;
 export type CriarAgendamentoInput = z.infer<typeof CriarAgendamentoDTO>;
+export type AtualizarAgendamentoInput = z.infer<typeof AtualizarAgendamentoDTO>;

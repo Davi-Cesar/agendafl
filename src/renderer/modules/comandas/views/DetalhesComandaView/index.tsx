@@ -76,6 +76,17 @@ export function DetalhesComandaView({ dados }: DetalhesComandaViewProps) {
                 </span>
               </div>
             </div>
+
+            {dadosComanda?.observacoes && (
+              <div className="mt-4 pt-3 border-t border-[#38342b] text-xs">
+                <span className="block font-mono text-[10px] text-[#e9c340] uppercase font-semibold mb-1">
+                  📝 OBSERVAÇÕES DO ATENDIMENTO
+                </span>
+                <p className="text-[#eae2d3] bg-[#110e06] border border-[#e9c340]/40 rounded-md p-3 whitespace-pre-wrap leading-relaxed">
+                  {dadosComanda.observacoes}
+                </p>
+              </div>
+            )}
           </div>
 
           {/* Card Serviços Realizados */}

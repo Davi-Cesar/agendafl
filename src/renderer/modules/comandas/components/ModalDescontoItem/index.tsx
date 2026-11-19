@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import type { ComandaItem, DescontoTipo } from '../../schemas/comanda.schema';
 import type { Cliente } from '@modules/clientes/schemas/cliente.schema';
 import { verificarElegibilidadeAniversario } from '../../utils/cupom.utils';
+import { NumberInput } from '@shared/ui/NumberInput';
 
 export interface ModalDescontoItemProps {
   aberto: boolean;
@@ -210,24 +211,20 @@ export function ModalDescontoItem({
 
           {/* Campo de Valor */}
           <div className="space-y-1">
-            <div className="relative">
-              <span className="absolute left-3 top-1/2 -translate-y-1/2 font-mono text-xs text-[#99907b]">
-                {tipoManual === 'percentual' ? '%' : 'R$'}
-              </span>
-              <input
-                type="number"
-                step="any"
-                min="0"
-                max={tipoManual === 'percentual' ? 100 : totalLinhaBruto}
-                placeholder={tipoManual === 'percentual' ? 'Ex: 15' : 'Ex: 20.00'}
-                value={valorManual}
-                onChange={(e) => {
-                  setValorManual(e.target.value);
-                  setErroValidacao('');
-                }}
-                className="w-full bg-[#16130b] border border-[#38342b] focus:border-[#e9c340] rounded px-8 py-2 text-xs font-mono text-[#eae2d3] outline-none transition-colors"
-              />
-            </div>
+            <NumberInput
+              min={0}
+              max={tipoManual === 'percentual' ? 100 : totalLinhaBruto}
+              step={tipoManual === 'percentual' ? 1 : 5}
+              placeholder={tipoManual === 'percentual' ? 'Ex: 15' : 'Ex: 20.00'}
+              value={valorManual}
+              prefix={tipoManual === 'percentual' ? '%' : 'R$'}
+              onRawChange={(raw) => {
+                setValorManual(raw);
+                setErroValidacao('');
+              }}
+              className="w-full h-9 bg-[#16130b]"
+              inputClassName="py-2 text-xs font-mono"
+            />
             {numVal > 0 && (
               <span className="block text-[11px] font-mono text-[#e9c340] text-right">
                 Desconto efetivo: R$ {prevDescontoEmReais.toFixed(2)} → Novo total:{' '}

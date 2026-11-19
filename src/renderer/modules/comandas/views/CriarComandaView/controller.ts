@@ -23,18 +23,25 @@ export function useCriarComandaViewController(dados: any) {
   const atualizarStatusComandaVinc = useAgendaStore((s) => s.atualizarStatusComandaVinc);
 
   const [cliente, setCliente] = useState<Cliente | null>(null);
-  const [itens, setItens] = useState<ComandaItem[]>([
-    {
-      id: 'item-1',
-      servicoId: dados?.servicoId,
-      profissionalId: dados?.profissionalId,
-      descricao: dados?.servico || 'Coloração + Tratamento',
-      profissional: dados?.profissionalNome || 'Elena Rossi',
-      quantidade: 1,
-      valorUnitario: Number(dados?.valor || 120.0),
-      desconto: null,
-    },
-  ]);
+  const [itens, setItens] = useState<ComandaItem[]>(() => {
+    if (Array.isArray(dados?.itens) && dados.itens.length > 0) {
+      return dados.itens;
+    }
+    return [
+      {
+        id: 'item-1',
+        agendamentoId: dados?.agendamentoId,
+        servicoId: dados?.servicoId,
+        profissionalId: dados?.profissionalId,
+        descricao: dados?.servico || 'Coloração + Tratamento',
+        profissional: dados?.profissionalNome || 'Elena Rossi',
+        quantidade: 1,
+        valorUnitario: Number(dados?.valor || 120.0),
+        desconto: null,
+      },
+    ];
+  });
+  const [observacoes, setObservacoes] = useState<string>(dados?.observacoes || '');
 
   const [modalAdicionarAberto, setModalAdicionarAberto] = useState<boolean>(false);
   const [modalDescontoAberto, setModalDescontoAberto] = useState<boolean>(false);
@@ -238,10 +245,29 @@ export function useCriarComandaViewController(dados: any) {
           ]
         : [{ forma: formaPagamento1, valor: total }];
 
+      const agendamentoIdsAtivos = Array.from(
+        new Set(
+          itens
+            .map((i) => i.agendamentoId)
+            .filter((id): id is string => Boolean(id))
+        )
+      );
+      if (agendamentoIdsAtivos.length === 0 && dados?.agendamentoId) {
+        agendamentoIdsAtivos.push(dados.agendamentoId);
+      }
+
+      const servicosResumo = itens.map((i) => i.descricao).join(' + ');
+      const profissionaisResumo = Array.from(new Set(itens.map((i) => i.profissional))).join(', ');
+
       const dadosComandaFinal = {
         ...dados,
+        agendamentoId: agendamentoIdsAtivos[0] || dados?.agendamentoId,
+        agendamentoIds: agendamentoIdsAtivos,
         clienteId: dados?.clienteId || cliente?.id,
         clienteNome: dados?.clienteNome || cliente?.nome,
+        profissionalNome: profissionaisResumo || dados?.profissionalNome,
+        servico: servicosResumo || dados?.servico,
+        observacoes: observacoes.trim() || undefined,
         comandaStatus: 'finalizada',
         subtotal,
         desconto: descontos,
@@ -256,10 +282,10 @@ export function useCriarComandaViewController(dados: any) {
       const comandaIdOficial = resFinal?.comandaId || dados?.comandaId;
       const comandaNumeroOficial = resFinal?.comandaNumero || dados?.comandaNumero;
 
-      if (dados?.agendamentoId) {
-        vincularComanda(dados.agendamentoId, comandaIdOficial, comandaNumeroOficial);
-        atualizarStatusComandaVinc(dados.agendamentoId, 'finalizada');
-      }
+      agendamentoIdsAtivos.forEach((agId) => {
+        vincularComanda(agId, comandaIdOficial, comandaNumeroOficial);
+        atualizarStatusComandaVinc(agId, 'finalizada');
+      });
 
       const payloadFinal = {
         tipo: 'detalhes' as const,
@@ -282,6 +308,7 @@ export function useCriarComandaViewController(dados: any) {
   }, [
     dados,
     cliente,
+    observacoes,
     dividirPagamento,
     formaPagamento1,
     valorForma1,
@@ -310,6 +337,8 @@ export function useCriarComandaViewController(dados: any) {
     dados,
     cliente,
     itens,
+    observacoes,
+    setObservacoes,
     subtotal,
     desconto: descontos,
     total,

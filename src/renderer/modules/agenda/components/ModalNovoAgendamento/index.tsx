@@ -1,5 +1,6 @@
 import React from 'react';
 import { useModalNovoAgendamentoController } from './controller';
+import { DatePicker } from '@shared/ui/DatePicker';
 
 export function ModalNovoAgendamento() {
   const controller = useModalNovoAgendamentoController();
@@ -82,20 +83,33 @@ export function ModalNovoAgendamento() {
                 SERVIÇO
               </label>
               <select
-                className="w-full bg-[#110e06] border border-[#38342b] focus:border-[#e9c340] outline-none rounded-md px-3 py-2 text-xs text-[#eae2d3] transition-all"
+                className="w-full bg-[#110e06] border border-[#38342b] focus:border-[#e9c340] outline-none rounded-md px-3 py-2 text-xs text-[#eae2d3] transition-all disabled:opacity-60"
                 value={controller.servico}
                 onChange={(e) => controller.setServico(e.target.value)}
+                disabled={controller.carregandoServicos || controller.servicosList.length === 0}
                 required
               >
-                <option value="" disabled>
-                  Selecione o serviço
-                </option>
-                {controller.servicosList.map((s) => (
-                  <option key={s.id} value={s.nome}>
-                    {s.nome} ({s.duracaoMinutos} min)
+                {controller.carregandoServicos ? (
+                  <option value="" disabled>
+                    Carregando serviços...
                   </option>
-                ))}
+                ) : controller.servicosList.length === 0 ? (
+                  <option value="" disabled>
+                    Nenhum serviço vinculado
+                  </option>
+                ) : (
+                  controller.servicosList.map((s) => (
+                    <option key={s.id} value={s.nome}>
+                      {s.nome} ({s.duracaoMinutos} min)
+                    </option>
+                  ))
+                )}
               </select>
+              {!controller.carregandoServicos && controller.profissionalId && controller.servicosList.length === 0 && (
+                <p className="mt-1 text-[10px] text-[#ffb4ab]">
+                  Este profissional não possui serviços vinculados.
+                </p>
+              )}
             </div>
 
             <div>
@@ -105,7 +119,7 @@ export function ModalNovoAgendamento() {
               <select
                 className="w-full bg-[#110e06] border border-[#38342b] focus:border-[#e9c340] outline-none rounded-md px-3 py-2 text-xs text-[#eae2d3] transition-all"
                 value={controller.profissionalId}
-                onChange={(e) => controller.setProfissionalId(e.target.value)}
+                onChange={(e) => controller.handleProfissionalChange(e.target.value)}
                 required
               >
                 <option value="" disabled>
@@ -113,7 +127,7 @@ export function ModalNovoAgendamento() {
                 </option>
                 {controller.profissionais.map((p) => (
                   <option key={p.id} value={p.id}>
-                    {p.nome} — {p.especialidade}
+                    {p.nome}
                   </option>
                 ))}
               </select>
@@ -126,29 +140,57 @@ export function ModalNovoAgendamento() {
               <label className="block text-xs font-mono text-[#99907b] mb-1">
                 DATA
               </label>
-              <input
-                className="w-full bg-[#110e06] border border-[#38342b] focus:border-[#e9c340] outline-none rounded-md px-3 py-2 text-xs text-[#eae2d3] transition-all"
-                type="date"
+              <DatePicker
                 value={controller.data}
-                onChange={(e) => controller.setData(e.target.value)}
+                onChange={(val) => controller.setData(val)}
+                minDate={new Date()}
                 required
               />
             </div>
 
             <div>
-              <label className="block text-xs font-mono text-[#99907b] mb-1">
-                HORÁRIO INÍCIO
-              </label>
+              <div className="flex items-center justify-between mb-1">
+                <label className="block text-xs font-mono text-[#99907b]">
+                  HORÁRIO INÍCIO
+                </label>
+                {controller.isHorarioExcecao && (
+                  <span className="inline-flex items-center gap-1 font-mono text-[10px] px-1.5 py-0.2 rounded bg-[#e9c340]/20 text-[#e9c340] border border-[#e9c340]/40 font-bold">
+                    <svg className="w-3 h-3" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                      <circle cx="5" cy="12" r="2.3" />
+                      <circle cx="12" cy="12" r="2.3" />
+                      <circle cx="19" cy="12" r="2.3" />
+                    </svg>
+                    <span>Exceção</span>
+                  </span>
+                )}
+              </div>
               <input
                 className="w-full bg-[#110e06] border border-[#38342b] focus:border-[#e9c340] outline-none rounded-md px-3 py-2 text-xs text-[#eae2d3] transition-all"
                 type="time"
-                step="1800"
+                step="300"
                 value={controller.horarioInicio}
                 onChange={(e) => controller.setHorarioInicio(e.target.value)}
                 required
               />
             </div>
           </div>
+
+          {/* Aviso de Exceção de Horário */}
+          {controller.isHorarioExcecao && (
+            <div className="bg-[#e9c340]/10 border border-[#e9c340]/40 rounded-md px-3.5 py-2.5 text-xs text-[#eae2d3] flex items-center gap-2.5">
+              <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-[#e9c340]/20 text-[#e9c340] shrink-0">
+                <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                  <circle cx="5" cy="12" r="2.3" />
+                  <circle cx="12" cy="12" r="2.3" />
+                  <circle cx="19" cy="12" r="2.3" />
+                </svg>
+              </span>
+              <div>
+                <strong className="text-[#e9c340] font-semibold">Exceção nesse horário:</strong> O profissional selecionado não atende normalmente às{' '}
+                <span className="font-mono font-semibold text-[#e9c340]">{controller.horarioInicio}</span> nesta data.
+              </div>
+            </div>
+          )}
 
           {/* OBSERVAÇÕES */}
           <div>

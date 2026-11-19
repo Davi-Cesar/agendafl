@@ -1,5 +1,6 @@
 import { useCallback, useState, useEffect, useMemo } from 'react';
 import { useAgendaStore } from '@modules/agenda/store/agenda.store';
+import { parseMetadataObservacoes } from '@modules/agenda/services/agenda.service';
 import { useComandasStore } from '../../store/comandas.store';
 import { useRouterStore } from '@shared/router/router.store';
 import { supabase } from '@shared/supabase/client';
@@ -41,8 +42,10 @@ export function useDetalhesComandaViewController(dadosIniciais: any) {
             finalizada_em,
             clientes (id, nome, telefone),
             agendamentos (
+              id,
               horario_inicio,
               horario_fim,
+              observacoes,
               servicos (nome, preco_padrao),
               profissionais (id, nome)
             ),
@@ -85,6 +88,9 @@ export function useDetalhesComandaViewController(dadosIniciais: any) {
           const numeroSequencial = db.numero_sequencial
             ? `#${String(db.numero_sequencial).padStart(4, '0')}`
             : dadosIniciais?.comandaNumero || '#0001';
+
+          const { obsLimpa: obsBanco } = parseMetadataObservacoes(apt?.observacoes);
+          const observacoesFinal = obsBanco || dadosIniciais?.observacoes || undefined;
 
           let itens = Array.isArray(db.comanda_itens) && db.comanda_itens.length > 0
             ? db.comanda_itens.map((it: any) => ({
@@ -133,6 +139,7 @@ export function useDetalhesComandaViewController(dadosIniciais: any) {
             clienteNome,
             horarioInicio,
             horarioFim,
+            observacoes: observacoesFinal,
             comandaNumero: numeroSequencial,
             subtotal: Number(db.subtotal ?? (Number(db.valor_total || 0) + Number(db.desconto || 0))),
             desconto: Number(db.desconto ?? 0),

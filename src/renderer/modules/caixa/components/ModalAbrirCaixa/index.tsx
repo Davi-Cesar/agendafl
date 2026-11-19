@@ -1,5 +1,6 @@
 import React from 'react';
 import { useModalAbrirCaixaController } from './controller';
+import { NumberInput } from '@shared/ui/NumberInput';
 
 export interface ModalAbrirCaixaProps {
   aberto: boolean;
@@ -37,15 +38,16 @@ export function ModalAbrirCaixa({ aberto }: ModalAbrirCaixaProps) {
             <label htmlFor="fundo-caixa-input" className="block font-mono text-[10px] text-[#99907b] uppercase mb-1 font-semibold">
               FUNDO DE CAIXA (R$)
             </label>
-            <input
+            <NumberInput
               id="fundo-caixa-input"
-              type="number"
-              min="0"
-              step="10"
+              min={0}
+              step={50}
               value={controller.saldoInicial}
-              onChange={(e) => controller.setSaldoInicial(Number(e.target.value))}
-              className="w-full bg-[#110e06] border border-[#38342b] focus:border-[#e9c340] outline-none rounded-md px-3 py-2 text.sm font-mono text-[#eae2d3]"
-              placeholder="500,00"
+              onChange={(val) => controller.setSaldoInicial(val)}
+              className="w-full h-10"
+              inputClassName="px-3 py-2 text-sm font-mono"
+              placeholder="0,00"
+              prefix="R$"
             />
           </div>
 

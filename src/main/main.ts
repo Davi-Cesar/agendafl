@@ -43,15 +43,20 @@ function configurarAtualizador(): void {
 }
 
 function createWindow(): void {
+  const iconCandidates = [
+    path.join(__dirname, '../../assets/icon.ico'),
+    path.join(__dirname, '../../assets/icon.png'),
+    path.join(__dirname, '../renderer/assets/icon.png'),
+  ];
+  const resolvedIcon = iconCandidates.find((p) => fs.existsSync(p));
+
   mainWindow = new BrowserWindow({
     width: 1280,
     height: 800,
     minWidth: 1024,
     minHeight: 680,
     title: 'Agenda FL',
-    icon: fs.existsSync(path.join(__dirname, '../../assets/icon.png'))
-      ? path.join(__dirname, '../../assets/icon.png')
-      : path.join(__dirname, '../renderer/assets/icon.png'),
+    icon: resolvedIcon,
     frame: false,
     titleBarStyle: 'hidden',
     backgroundColor: '#0a0e1a',
@@ -105,13 +110,33 @@ ipcMain.on('window:close', () => mainWindow?.close());
 // Reinicia o app e aplica a atualização já baixada.
 ipcMain.on('update:install', () => autoUpdater.quitAndInstall());
 
-app.whenReady().then(() => {
-  createWindow();
-  configurarAtualizador();
-  app.on('activate', () => {
-    if (BrowserWindow.getAllWindows().length === 0) createWindow();
+// Trava de instância única: impede abrir várias janelas do sistema no mesmo computador.
+// Se o usuário clicar no atalho novamente, restaura e foca a janela que já está aberta.
+const gotSingleInstanceLock = app.requestSingleInstanceLock();
+
+if (!gotSingleInstanceLock) {
+  app.quit();
+} else {
+  app.on('second-instance', () => {
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      if (mainWindow.isMinimized()) {
+        mainWindow.restore();
+      }
+      if (!mainWindow.isVisible()) {
+        mainWindow.show();
+      }
+      mainWindow.focus();
+    }
   });
-});
+
+  app.whenReady().then(() => {
+    createWindow();
+    configurarAtualizador();
+    app.on('activate', () => {
+      if (BrowserWindow.getAllWindows().length === 0) createWindow();
+    });
+  });
+}
 
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit();

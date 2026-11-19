@@ -59,8 +59,10 @@ export const useComandasStore = create<ComandasStore>((set, get) => ({
     try {
       const res = await comandasService.finalizarComandaNoSupabase({
         agendamentoId: dadosFinal.agendamentoId,
+        agendamentoIds: dadosFinal.agendamentoIds,
         clienteId: dadosFinal.clienteId,
         clienteNome: dadosFinal.clienteNome,
+        observacoes: dadosFinal.observacoes,
         subtotal: Number(dadosFinal.subtotal || 0),
         desconto: Number(dadosFinal.desconto || 0),
         valorTotal: Number(dadosFinal.valorTotal ?? dadosFinal.valor ?? 0),

@@ -2,10 +2,12 @@ import { supabase } from '@shared/supabase/client';
 import {
   AgendamentoSchema,
   CriarAgendamentoDTO,
+  AtualizarAgendamentoDTO,
   type Agendamento,
   type Profissional,
   type ServicoItem,
   type CriarAgendamentoInput,
+  type AtualizarAgendamentoInput,
 } from '../schemas/agendamento.schema';
 
 export async function buscarProfissionais(dataStr?: string): Promise<Profissional[]> {
@@ -74,7 +76,7 @@ export async function buscarHorariosEExcecoesDosProfissionais(): Promise<{
       manhaFim: h.manha_fim?.slice(0, 5) || '11:00',
       tardeInicio: h.tarde_inicio?.slice(0, 5) || '13:30',
       tardeFim: h.tarde_fim?.slice(0, 5) || '17:00',
-      intervaloAlmoco: h.intervalo_almoco || '11:00 - 13:30',
+      intervaloAlmoco: `${h.manha_fim?.slice(0, 5) || '11:00'} - ${h.tarde_inicio?.slice(0, 5) || '13:30'}`,
     });
   });
 
@@ -128,6 +130,67 @@ export async function buscarServicos(): Promise<ServicoItem[]> {
   }));
 }
 
+export async function buscarServicosPorProfissional(profissionalId: string): Promise<ServicoItem[]> {
+  if (!profissionalId) return [];
+
+  const { data, error } = await supabase
+    .from('profissionais_servicos')
+    .select('servico_id, servicos!inner(id, nome, duracao_minutos, ativo)')
+    .eq('profissional_id', profissionalId)
+    .eq('servicos.ativo', true);
+
+  if (error) {
+    console.error('Erro ao buscar serviços do profissional:', error);
+    return [];
+  }
+
+  return (data ?? [])
+    .map((item: any) => ({
+      id: item.servicos?.id || item.servico_id,
+      nome: item.servicos?.nome || 'Serviço',
+      duracaoMinutos: Number(item.servicos?.duracao_minutos || 30),
+    }))
+    .sort((a, b) => a.nome.localeCompare(b.nome));
+}
+
+export function parseMetadataObservacoes(rawObs: unknown): {
+  customStatus?: string;
+  comandaIdTag?: string;
+  comandaNumeroTag?: string;
+  obsLimpa?: string;
+} {
+  let texto = typeof rawObs === 'string' ? rawObs : '';
+  let customStatus: string | undefined;
+  let comandaIdTag: string | undefined;
+  let comandaNumeroTag: string | undefined;
+
+  // Extrai tags no início da string (ex: [STATUS:xxx] ou [COMANDA:uuid:#0001])
+  let mudou = true;
+  while (mudou) {
+    mudou = false;
+    const statusMatch = texto.match(/^\[STATUS:([^\]]+)\]\s*(.*)$/s);
+    if (statusMatch) {
+      customStatus = statusMatch[1];
+      texto = statusMatch[2] || '';
+      mudou = true;
+    }
+    const cmdMatch = texto.match(/^\[COMANDA:([^:\]]+):([^\]]+)\]\s*(.*)$/s);
+    if (cmdMatch) {
+      comandaIdTag = cmdMatch[1];
+      comandaNumeroTag = cmdMatch[2];
+      texto = cmdMatch[3] || '';
+      mudou = true;
+    }
+  }
+
+  return {
+    customStatus,
+    comandaIdTag,
+    comandaNumeroTag,
+    obsLimpa: texto.trim() ? texto.trim() : undefined,
+  };
+}
+
 export async function buscarAgendamentosDoDia(dataStr: string): Promise<Agendamento[]> {
   const { data, error } = await supabase
     .from('agendamentos')
@@ -166,10 +229,31 @@ export async function buscarAgendamentosDoDia(dataStr: string): Promise<Agendame
     const cmdList = Array.isArray(row.comandas) ? row.comandas : row.comandas ? [row.comandas] : [];
     const cmd = cmdList.length > 0 ? cmdList[0] : null;
 
-    const comandaId = cmd?.id || undefined;
-    const comandaNumero = cmd ? `#${String(cmd.numero_sequencial || 1).padStart(4, '0')}` : undefined;
-    const comandaStatus = cmd ? (cmd.status === 'aberta' ? 'rascunho' : cmd.status) : undefined;
-    const valor = cmd?.valor_total != null ? Number(cmd.valor_total) : (row.servicos?.preco_padrao != null ? Number(row.servicos.preco_padrao) : undefined);
+    const { customStatus, comandaIdTag, comandaNumeroTag, obsLimpa } = parseMetadataObservacoes(row.observacoes);
+
+    const comandaId = cmd?.id || comandaIdTag || undefined;
+    const comandaNumero = cmd
+      ? `#${String(cmd.numero_sequencial || 1).padStart(4, '0')}`
+      : comandaNumeroTag || undefined;
+    const comandaStatus = cmd
+      ? (cmd.status === 'aberta' ? 'rascunho' : cmd.status)
+      : comandaIdTag
+      ? 'finalizada'
+      : undefined;
+
+    // Preserva o valor individual do serviço agendado para não misturar com o total unificado da comanda
+    const valor =
+      row.servicos?.preco_padrao != null
+        ? Number(row.servicos.preco_padrao)
+        : cmd?.valor_total != null
+        ? Number(cmd.valor_total)
+        : undefined;
+
+    const statusBase = row.status === 'cancelado' ? 'faltou' : row.status;
+    const statusEfetivo =
+      statusBase === 'agendado' && customStatus
+        ? customStatus
+        : statusBase;
 
     return AgendamentoSchema.parse({
       id: row.id,
@@ -182,35 +266,37 @@ export async function buscarAgendamentosDoDia(dataStr: string): Promise<Agendame
       data: row.data,
       horarioInicio: hInicio,
       horarioFim: hFim,
-      status: row.status === 'cancelado' ? 'faltou' : row.status,
-      countdown: row.status === 'em_atendimento' ? 'Faltam 15min' : undefined,
+      status: statusEfetivo,
+      countdown: statusEfetivo === 'em_atendimento' ? 'Faltam 15min' : undefined,
       comandaId,
       comandaNumero,
       comandaStatus,
-      observacoes: row.observacoes || undefined,
+      observacoes: obsLimpa,
     });
   });
 }
 
 export async function salvarNovoAgendamento(input: CriarAgendamentoInput): Promise<Agendamento> {
   const valid = CriarAgendamentoDTO.parse(input);
+  const nomeClienteLimpo = valid.clienteNome.trim();
 
-  let clienteId = valid.clienteNome;
-  const isUuid = /^[0-9a-fA-F-]{36}$/.test(valid.clienteNome);
+  let clienteId = nomeClienteLimpo;
+  const isUuid = /^[0-9a-fA-F-]{36}$/.test(nomeClienteLimpo);
 
   if (!isUuid) {
-    const { data: clienteExist } = await supabase
+    const { data: clientesEncontrados } = await supabase
       .from('clientes')
       .select('id')
-      .ilike('nome', valid.clienteNome)
-      .maybeSingle();
+      .ilike('nome', nomeClienteLimpo)
+      .is('removido_em', null)
+      .limit(1);
 
-    if (clienteExist) {
-      clienteId = clienteExist.id;
+    if (clientesEncontrados && clientesEncontrados.length > 0) {
+      clienteId = clientesEncontrados[0].id;
     } else {
       const { data: novoCliente, error: errCli } = await supabase
         .from('clientes')
-        .insert({ nome: valid.clienteNome, telefone: '(11) 90000-0000' })
+        .insert({ nome: nomeClienteLimpo, telefone: '(11) 90000-0000' })
         .select()
         .single();
       if (errCli || !novoCliente) throw new Error('Erro ao registrar cliente');
@@ -221,12 +307,12 @@ export async function salvarNovoAgendamento(input: CriarAgendamentoInput): Promi
   let servicoId = valid.servico;
   const isServicoUuid = /^[0-9a-fA-F-]{36}$/.test(valid.servico);
   if (!isServicoUuid) {
-    const { data: srvExist } = await supabase
+    const { data: srvEncontrados } = await supabase
       .from('servicos')
       .select('id')
-      .ilike('nome', valid.servico)
-      .maybeSingle();
-    if (srvExist) servicoId = srvExist.id;
+      .ilike('nome', valid.servico.trim())
+      .limit(1);
+    if (srvEncontrados && srvEncontrados.length > 0) servicoId = srvEncontrados[0].id;
   }
 
   const payload = {
@@ -237,7 +323,7 @@ export async function salvarNovoAgendamento(input: CriarAgendamentoInput): Promi
     horario_inicio: `${valid.horarioInicio}:00`,
     horario_fim: `${valid.horarioFim}:00`,
     status: 'agendado',
-    observacoes: valid.observacoes,
+    observacoes: valid.observacoes?.trim() || null,
   };
 
   const { data, error } = await supabase.from('agendamentos').insert(payload).select().single();
@@ -251,7 +337,7 @@ export async function salvarNovoAgendamento(input: CriarAgendamentoInput): Promi
     id: data.id,
     profissionalId: data.profissional_id,
     clienteId: data.cliente_id || undefined,
-    clienteNome: valid.clienteNome,
+    clienteNome: nomeClienteLimpo,
     servicoId: data.servico_id || undefined,
     servico: valid.servico,
     data: data.data,
@@ -262,18 +348,95 @@ export async function salvarNovoAgendamento(input: CriarAgendamentoInput): Promi
   });
 }
 
+const STATUS_NATIVOS_DB = new Set(['agendado', 'em_atendimento', 'concluido', 'faltou']);
+
 export async function atualizarStatusAgendamentoNoSupabase(
   id: string,
   novoStatus: string
 ): Promise<void> {
+  const { data: atual } = await supabase
+    .from('agendamentos')
+    .select('observacoes')
+    .eq('id', id)
+    .maybeSingle();
+
+  const { comandaIdTag, comandaNumeroTag, obsLimpa } = parseMetadataObservacoes(atual?.observacoes);
+  const cmdTagPrefix =
+    comandaIdTag && comandaNumeroTag ? `[COMANDA:${comandaIdTag}:${comandaNumeroTag}]` : '';
+
+  const isNativo = STATUS_NATIVOS_DB.has(novoStatus);
+  const obsComComanda = [cmdTagPrefix, obsLimpa].filter(Boolean).join(' ');
+
+  const payload = isNativo
+    ? { status: novoStatus, observacoes: obsComComanda || null }
+    : {
+        status: 'agendado',
+        observacoes: `[STATUS:${novoStatus}]${obsComComanda ? ` ${obsComComanda}` : ''}`,
+      };
+
   const { error } = await supabase
     .from('agendamentos')
-    .update({ status: novoStatus })
+    .update(payload)
     .eq('id', id);
 
   if (error) {
     console.error('Erro ao atualizar status no Supabase:', error);
     throw new Error(error.message);
+  }
+}
+
+export async function atualizarAgendamentoNoSupabase(
+  input: AtualizarAgendamentoInput
+): Promise<void> {
+  const valid = AtualizarAgendamentoDTO.parse(input);
+
+  // Resolve servico_id a partir do nome selecionado
+  let servicoId: string | undefined = undefined;
+  const isServicoUuid = /^[0-9a-fA-F-]{36}$/.test(valid.servico);
+  if (isServicoUuid) {
+    servicoId = valid.servico;
+  } else {
+    const { data: srvEncontrados } = await supabase
+      .from('servicos')
+      .select('id')
+      .ilike('nome', valid.servico.trim())
+      .limit(1);
+    if (srvEncontrados && srvEncontrados.length > 0) {
+      servicoId = srvEncontrados[0].id;
+    }
+  }
+
+  // Preserva metadados internos ([STATUS:...] e [COMANDA:...]) gravados em observacoes
+  const { data: atual } = await supabase
+    .from('agendamentos')
+    .select('observacoes')
+    .eq('id', valid.id)
+    .maybeSingle();
+
+  const { customStatus, comandaIdTag, comandaNumeroTag } = parseMetadataObservacoes(atual?.observacoes);
+  const statusTag = customStatus ? `[STATUS:${customStatus}]` : '';
+  const cmdTag = comandaIdTag && comandaNumeroTag ? `[COMANDA:${comandaIdTag}:${comandaNumeroTag}]` : '';
+  const obsLimpa = valid.observacoes?.trim() || '';
+  const observacoesFinal = [statusTag, cmdTag, obsLimpa].filter(Boolean).join(' ') || null;
+
+  const updatePayload: Record<string, string | null> = {
+    profissional_id: valid.profissionalId,
+    horario_inicio: `${valid.horarioInicio}:00`,
+    horario_fim: `${valid.horarioFim}:00`,
+    observacoes: observacoesFinal,
+  };
+  if (servicoId) {
+    updatePayload.servico_id = servicoId;
+  }
+
+  const { error } = await supabase
+    .from('agendamentos')
+    .update(updatePayload)
+    .eq('id', valid.id);
+
+  if (error) {
+    console.error('Erro ao atualizar agendamento no Supabase:', error);
+    throw new Error(`Erro ao atualizar agendamento: ${error.message}`);
   }
 }
 

@@ -25,6 +25,7 @@ export type DescontoItem = z.infer<typeof DescontoItemSchema>;
 
 export const ComandaItemSchema = z.object({
   id: z.string(),
+  agendamentoId: z.string().optional(),
   servicoId: z.string().optional(),
   profissionalId: z.string().optional(),
   descricao: z.string(),

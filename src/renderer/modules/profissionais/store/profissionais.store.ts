@@ -30,6 +30,7 @@ interface ProfissionaisStore {
   carregando: boolean;
   salvandoHorarios: boolean;
   horariosSalvosSucesso: boolean;
+  erroHorarios: string | null;
 
   modalNovoAberto: boolean;
   modalServicosAberto: boolean;
@@ -80,6 +81,7 @@ export const useProfissionaisStore = create<ProfissionaisStore>((set, get) => ({
   carregando: false,
   salvandoHorarios: false,
   horariosSalvosSucesso: false,
+  erroHorarios: null,
 
   modalNovoAberto: false,
   modalServicosAberto: false,
@@ -95,7 +97,7 @@ export const useProfissionaisStore = create<ProfissionaisStore>((set, get) => ({
   setBusca: (busca) => set({ busca }),
 
   setProfissionalSelecionadoId: (id) => {
-    set({ profissionalSelecionadoId: id, horariosSalvosSucesso: false });
+    set({ profissionalSelecionadoId: id, horariosSalvosSucesso: false, erroHorarios: null });
     get().carregarDetalhesProfissional(id);
   },
 
@@ -178,6 +180,26 @@ export const useProfissionaisStore = create<ProfissionaisStore>((set, get) => ({
     if (servicoIds !== undefined) {
       await service.salvarServicosDoProfissional(salvo.id, servicoIds);
     }
+    // Para novo profissional cadastrado, inicializar grade semanal padrão
+    if (!dados.id) {
+      const todosDias = [0, 1, 2, 3, 4, 5, 6];
+      const horariosPadrao = todosDias.map((d) => ({
+        profissionalId: salvo.id,
+        diaSemana: d,
+        ativo: d !== 0,
+        manhaInicio: d === 0 ? '' : '08:00',
+        manhaFim: d === 0 ? '' : '11:00',
+        tardeInicio: d === 0 ? '' : '13:30',
+        tardeFim: d === 0 ? '' : '17:00',
+        intervaloAlmoco: d === 0 ? '' : '11:00 - 13:30',
+        excecoes: [],
+      }));
+      try {
+        await service.salvarHorariosDoProfissional(salvo.id, horariosPadrao);
+      } catch (e) {
+        console.warn('Falha ao inicializar horários padrão do novo profissional:', e);
+      }
+    }
     await get().carregarProfissionais();
     set({ profissionalSelecionadoId: salvo.id });
     await get().carregarDetalhesProfissional(salvo.id);
@@ -229,31 +251,77 @@ export const useProfissionaisStore = create<ProfissionaisStore>((set, get) => ({
   },
 
   atualizarHorarioSemanal: (diaSemana, campo, valor) => {
-    set((state) => ({
-      horariosDoProfissional: state.horariosDoProfissional.map((h) =>
-        h.diaSemana === diaSemana ? { ...h, [campo]: valor } : h
-      ),
-      horariosSalvosSucesso: false,
-    }));
+    set((state) => {
+      let lista = state.horariosDoProfissional;
+      if (!lista || lista.length === 0 || !lista.some((h) => h.diaSemana === diaSemana)) {
+        const todosDias = [0, 1, 2, 3, 4, 5, 6];
+        lista = todosDias.map((d) => {
+          const item = (state.horariosDoProfissional || []).find((x) => x.diaSemana === d);
+          if (item) return item;
+          const isDom = d === 0;
+          return {
+            profissionalId: state.profissionalSelecionadoId || '',
+            diaSemana: d,
+            ativo: !isDom,
+            manhaInicio: isDom ? '' : '08:00',
+            manhaFim: isDom ? '' : '11:00',
+            tardeInicio: isDom ? '' : '13:30',
+            tardeFim: isDom ? '' : '17:00',
+            intervaloAlmoco: isDom ? '' : '11:00 - 13:30',
+            excecoes: [],
+          };
+        });
+      }
+
+      return {
+        horariosDoProfissional: lista.map((h) => {
+          if (h.diaSemana !== diaSemana) return h;
+          const updated = { ...h, [campo]: valor };
+          updated.intervaloAlmoco = `${updated.manhaFim || '11:00'} - ${updated.tardeInicio || '13:30'}`;
+          return updated;
+        }),
+        horariosSalvosSucesso: false,
+        erroHorarios: null,
+      };
+    });
   },
 
   salvarHorarios: async () => {
     const profId = get().profissionalSelecionadoId;
     if (!profId) return;
-    set({ salvandoHorarios: true, horariosSalvosSucesso: false });
+    set({ salvandoHorarios: true, horariosSalvosSucesso: false, erroHorarios: null });
     try {
-      await service.salvarHorariosDoProfissional(profId, get().horariosDoProfissional);
-      set({ salvandoHorarios: false, horariosSalvosSucesso: true });
+      let lista = get().horariosDoProfissional;
+      if (!lista || lista.length === 0) {
+        const todosDias = [0, 1, 2, 3, 4, 5, 6];
+        lista = todosDias.map((d) => ({
+          profissionalId: profId,
+          diaSemana: d,
+          ativo: d !== 0,
+          manhaInicio: d === 0 ? '' : '08:00',
+          manhaFim: d === 0 ? '' : '11:00',
+          tardeInicio: d === 0 ? '' : '13:30',
+          tardeFim: d === 0 ? '' : '17:00',
+          intervaloAlmoco: d === 0 ? '' : '11:00 - 13:30',
+          excecoes: [],
+        }));
+      }
+      await service.salvarHorariosDoProfissional(profId, lista);
+      set({ salvandoHorarios: false, horariosSalvosSucesso: true, erroHorarios: null });
 
       // Emitir evento para a Agenda atualizar imediatamente
       eventBus.emit('profissionais:horarios_atualizados', { profissionalId: profId });
 
       setTimeout(() => {
         set({ horariosSalvosSucesso: false });
-      }, 3000);
-    } catch (err) {
+      }, 3500);
+    } catch (err: any) {
       console.error('Erro ao salvar horários:', err);
-      set({ salvandoHorarios: false });
+      const msg = err instanceof Error ? err.message : 'Falha ao salvar horários no Supabase';
+      set({ salvandoHorarios: false, erroHorarios: msg });
+      setTimeout(() => {
+        set({ erroHorarios: null });
+      }, 6000);
     }
   },
 
@@ -269,9 +337,10 @@ export const useProfissionaisStore = create<ProfissionaisStore>((set, get) => ({
         manhaFim: modelo.manhaFim,
         tardeInicio: modelo.tardeInicio,
         tardeFim: modelo.tardeFim,
-        intervaloAlmoco: modelo.intervaloAlmoco,
+        intervaloAlmoco: `${modelo.manhaFim || '11:00'} - ${modelo.tardeInicio || '13:30'}`,
       })),
       horariosSalvosSucesso: false,
+      erroHorarios: null,
     }));
 
     get().salvarHorarios();

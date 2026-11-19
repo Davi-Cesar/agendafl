@@ -90,7 +90,7 @@ async function main() {
     falhar('pasta "release/" não encontrada. Rode "npm run dist" antes.');
   }
 
-  const instalador = `FL-Agenda-Setup-${version}.exe`;
+  const instalador = `Agenda-FL-Setup-${version}.exe`;
   const arquivos = [instalador, `${instalador}.blockmap`, 'latest.yml'];
 
   for (const nome of arquivos) {

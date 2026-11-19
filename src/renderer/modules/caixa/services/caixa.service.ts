@@ -176,9 +176,19 @@ export async function buscarDadosDoCaixa(
   listComandas.forEach((c: any) => {
     const clienteNome = c.clientes?.nome || 'Cliente';
     const apt = Array.isArray(c.agendamentos) ? c.agendamentos[0] : c.agendamentos;
-    const primeiroItem = Array.isArray(c.comanda_itens) && c.comanda_itens.length > 0 ? c.comanda_itens[0] : null;
-    const servicoNome = apt?.servicos?.nome || primeiroItem?.servicos?.nome || 'Atendimento';
-    const profNomePadrao = primeiroItem?.profissionais?.nome || apt?.profissionais?.nome || 'Profissional';
+    const listaItens = Array.isArray(c.comanda_itens) ? c.comanda_itens : [];
+    const nomesServicos = listaItens.map((it: any) => it.servicos?.nome).filter(Boolean);
+    const nomesProfs = Array.from(
+      new Set(listaItens.map((it: any) => it.profissionais?.nome).filter(Boolean))
+    );
+    const servicoNome =
+      nomesServicos.length > 0
+        ? nomesServicos.join(' + ')
+        : apt?.servicos?.nome || 'Atendimento';
+    const profNomePadrao =
+      nomesProfs.length > 0
+        ? nomesProfs.join(', ')
+        : apt?.profissionais?.nome || 'Profissional';
 
     const rawHorario = c.finalizada_em || c.created_at || new Date().toISOString();
     const dataObj = new Date(rawHorario);
@@ -432,9 +442,19 @@ export async function buscarDetalhesCaixaFechado(
   (comandasData || []).forEach((c: any) => {
     const clienteNome = c.clientes?.nome || 'Cliente';
     const apt = Array.isArray(c.agendamentos) ? c.agendamentos[0] : c.agendamentos;
-    const primeiroItem = Array.isArray(c.comanda_itens) && c.comanda_itens.length > 0 ? c.comanda_itens[0] : null;
-    const servicoNome = apt?.servicos?.nome || primeiroItem?.servicos?.nome || 'Atendimento';
-    const profNomePadrao = primeiroItem?.profissionais?.nome || apt?.profissionais?.nome || 'Profissional';
+    const listaItens = Array.isArray(c.comanda_itens) ? c.comanda_itens : [];
+    const nomesServicos = listaItens.map((it: any) => it.servicos?.nome).filter(Boolean);
+    const nomesProfs = Array.from(
+      new Set(listaItens.map((it: any) => it.profissionais?.nome).filter(Boolean))
+    );
+    const servicoNome =
+      nomesServicos.length > 0
+        ? nomesServicos.join(' + ')
+        : apt?.servicos?.nome || 'Atendimento';
+    const profNomePadrao =
+      nomesProfs.length > 0
+        ? nomesProfs.join(', ')
+        : apt?.profissionais?.nome || 'Profissional';
 
     const rawHorario = c.finalizada_em || c.created_at || new Date().toISOString();
     const dataObj = new Date(rawHorario);

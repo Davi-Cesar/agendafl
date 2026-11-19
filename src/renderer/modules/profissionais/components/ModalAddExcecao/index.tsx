@@ -1,5 +1,6 @@
 import React from 'react';
 import { useModalAddExcecaoController } from './controller';
+import { DatePicker } from '@shared/ui/DatePicker';
 
 export function ModalAddExcecao() {
   const controller = useModalAddExcecaoController();
@@ -43,12 +44,11 @@ export function ModalAddExcecao() {
           {/* Seletor de Data Específica */}
           <div>
             <label className="block text-xs font-mono text-[#99907b] mb-1">DATA ESPECÍFICA (EXCEÇÃO PONTUAL) *</label>
-            <input
-              type="date"
-              required
+            <DatePicker
               value={controller.dataStr}
-              onChange={(e) => controller.setDataStr(e.target.value)}
-              className="w-full bg-[#110e06] border border-[#38342b] focus:border-[#e9c340] outline-none rounded-md px-3.5 py-2 text-xs font-mono text-[#eae2d3]"
+              onChange={(val) => controller.setDataStr(val)}
+              minDate={new Date()}
+              required
             />
           </div>
 
@@ -74,7 +74,12 @@ export function ModalAddExcecao() {
                 } ${controller.tipoTravado ? 'cursor-not-allowed opacity-90' : 'cursor-pointer hover:text-[#eae2d3]'}`}
               >
                 <div className="flex items-center gap-1.5 font-sora font-bold text-xs">
-                  <span>⚡ Atendimento Extra</span>
+                  <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                    <circle cx="5" cy="12" r="2.3" />
+                    <circle cx="12" cy="12" r="2.3" />
+                    <circle cx="19" cy="12" r="2.3" />
+                  </svg>
+                  <span>Atendimento Extra</span>
                 </div>
                 <span className="text-[10px] mt-1 text-inherit font-normal">
                   Abre exceção de horário (ex: Domingo ou fora do expediente).

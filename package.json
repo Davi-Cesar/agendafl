@@ -1,6 +1,6 @@
 {
   "name": "agendafl",
-  "version": "1.0.0",
+  "version": "1.2.0",
   "description": "Agenda FL — Aplicativo Desktop de Agenda e Gestão para Estética e Beleza",
   "main": "dist/main/main.js",
   "scripts": {
